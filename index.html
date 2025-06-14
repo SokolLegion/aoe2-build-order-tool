@@ -598,7 +598,7 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    Developed by <strong>Sokół </strong> &nbsp;- ©2025
+    Developed by <strong>Sokół </strong> &nbsp;- ©2025 - v0.36
   </div>
 
   <script>
@@ -2028,7 +2028,7 @@
 		<button id="btn-train-civ" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
 		<div class="flex items-center">
 		  <span>Villager</span>
-		  <img src="icons/vil icons/villager-icon.png" class="h-6 w-6 mr-2" alt="Villager">
+		  <img src="icons/vil-icons/villager-icon.png" class="h-6 w-6 mr-2" alt="Villager">
 		</div>
 	  `;
 	  list.appendChild(villagerLi);
@@ -2042,7 +2042,7 @@
 		  <button id="btn-fishingship" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
 		  <div class="flex items-center">
 			<span>Fishing Ship</span>
-			<img src="icons/vil icons/fishing-ship-icon.png" class="h-6 w-6 mr-2" alt="Fishing Ship">
+			<img src="icons/vil-icons/fishing-ship-icon.png" class="h-6 w-6 mr-2" alt="Fishing Ship">
 		  </div>
 		`;
 		list.appendChild(fishingLi);
@@ -2054,7 +2054,7 @@
 		  <button id="btn-transportship" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
 		  <div class="flex items-center">
 			<span>Transport Ship</span>
-			<img src="icons/vil icons/transportship-icon.png" class="h-6 w-6 mr-2" alt="Transport Ship">
+			<img src="icons/vil-icons/transportship-icon.png" class="h-6 w-6 mr-2" alt="Transport Ship">
 		  </div>
 		`;
 		list.appendChild(transportLi);
@@ -2895,16 +2895,16 @@
 	function renderVils() {
 	  vd.innerHTML = '';
 	  const icons = {
-		idle: 'icons/vil icons/villager-icon.png',
-		berries: 'icons/vil icons/villager-berries.png',
-		sheep: 'icons/vil icons/villager-sheep.png',
-		hunt: 'icons/vil icons/villager-hunt.png',
-		fish: 'icons/vil icons/villager-fish.png',
-		farm: 'icons/vil icons/villager-farm.png',
-		repair: 'icons/vil icons/villager-repair.png',
-		wood: 'icons/vil icons/villager-wood.png',
-		gold: 'icons/vil icons/villager-gold.png',
-		stone: 'icons/vil icons/villager-stone.png'
+		idle: 'icons/vil-icons/villager-icon.png',
+		berries: 'icons/vil-icons/villager-berries.png',
+		sheep: 'icons/vil-icons/villager-sheep.png',
+		hunt: 'icons/vil-icons/villager-hunt.png',
+		fish: 'icons/vil-icons/villager-fish.png',
+		farm: 'icons/vil-icons/villager-farm.png',
+		repair: 'icons/vil-icons/villager-repair.png',
+		wood: 'icons/vil-icons/villager-wood.png',
+		gold: 'icons/vil-icons/villager-gold.png',
+		stone: 'icons/vil-icons/villager-stone.png'
 	  };
 	  
 	  vils.forEach(v => {
@@ -3052,13 +3052,13 @@
 
 		const img = document.createElement('img');
 		if (ship.task === 'closedeepfish' ) {
-		  img.src = 'icons/vil icons/fishingshipclose.png';
+		  img.src = 'icons/vil-icons/fishingshipclose.png';
 		} else if (ship.task === 'fardeepfish') {
-		  img.src = 'icons/vil icons/fishingshipfar.png';
+		  img.src = 'icons/vil-icons/fishingshipfar.png';
 		} else if (ship.task === 'shorefish') {
-		  img.src = 'icons/vil icons/fishingshipshore.png';
+		  img.src = 'icons/vil-icons/fishingshipshore.png';
 		} else {
-		  img.src = 'icons/vil icons/fishing-ship-icon.png';
+		  img.src = 'icons/vil-icons/fishing-ship-icon.png';
 		}
 		img.style.opacity = ship.task === 'idle' ? 0.5 : 1;
 		img.width = 24;
@@ -3082,7 +3082,7 @@
 		d.className = 'villager';
 
 		const img = document.createElement('img');
-		img.src = 'icons/vil icons/transportship-icon.png';
+		img.src = 'icons/vil-icons/transportship-icon.png';
 		img.style.opacity = 1;
 		img.width = 24;
 		img.height = 24;
@@ -3447,11 +3447,11 @@
 			  const economicUnits = ['villager', 'fishingship', 'transportship'];
 				if (economicUnits.includes(unitType)) {
 				  if (unitType === 'villager') {
-					return 'icons/vil icons/villager-icon.png';
+					return 'icons/vil-icons/villager-icon.png';
 				  } else if (unitType === 'fishingship') {
-					return 'icons/vil icons/fishing-ship-icon.png';
+					return 'icons/vil-icons/fishing-ship-icon.png';
 				  } else if (unitType === 'transportship') {
-					return 'icons/vil icons/transportship-icon.png';
+					return 'icons/vil-icons/transportship-icon.png';
 				  }
 				}
 			  
