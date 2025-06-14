@@ -1,0 +1,3771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>AoE2 Build Tool - Castle Age Update</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Layout */
+    body { 
+	  display: flex; 
+	  flex-direction: column;
+	  margin: 0; 
+	  height: 100vh; 
+	  font-family: sans-serif; 
+	  width: 100vw; 
+	  overflow-x: hidden;
+	}
+	
+	.footer {
+	  background: #f3f4f6;
+	  border-top: 1px solid #ddd;
+	  padding: 0.5rem;
+	  text-align: center;
+	  font-size: 0.875rem;
+	  color: #6b7280;
+	  flex-shrink: 0;
+	  height: 60px;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	}
+
+	.main-content {
+	  display: flex;
+	  flex: 1;
+	  overflow: hidden;
+	}
+    
+    #civ-panel { 
+      width: 400px; 
+      border-right: 1px solid #ddd; 
+      background: #f3fafb; 
+      padding: 1rem; 
+    }
+    
+    #main { 
+	  flex: 1; 
+	  overflow-y: auto; 
+	  padding: 1rem;
+	  height: calc(100vh - 60px);
+	}
+    
+    #build-order-panel { 
+      width: 250px; 
+      border-left: 1px solid #ddd; 
+      background: #f9fafb; 
+      padding: 1rem; 
+    }
+
+    /* Civ panel */
+	#civ-panel { 
+	  width: 400px; 
+	  border-right: 1px solid #ddd; 
+	  background: #f3fafb; 
+	  padding: 1rem;
+	  height: calc(100vh - 60px);
+	  overflow-y: auto;
+	}
+
+	#build-order-panel { 
+	  width: 250px; 
+	  border-left: 1px solid #ddd; 
+	  background: #f9fafb; 
+	  padding: 1rem;
+	  height: calc(100vh - 60px);
+	  overflow-y: auto;
+	}
+	
+    #civ-panel h2 { 
+      font-weight: bold; 
+      margin-bottom: 0.5rem; 
+    }
+    
+    #civ-panel label { 
+      display: block; 
+      margin-bottom: 0.5rem; 
+      cursor: pointer; 
+    }
+
+    /* Task Zones */
+    .task-zone { 
+      border: 2px dashed #ccc; 
+      border-radius: 0.5rem; 
+      padding: 0.75rem; 
+      margin: 0.25rem; 
+      min-width: 6rem; 
+      text-align: center; 
+      font-size: 0.875rem; 
+      display: inline-block; 
+    }
+    
+    .task-zone.dragover { 
+      background: #c7d2fe; 
+    }
+    
+    .task-zone.idle { 
+      background: #e5e7eb; 
+    }
+    
+    .task-zone.berries, 
+    .task-zone.sheep, 
+    .task-zone.hunt, 
+    .task-zone.fish, 
+    .task-zone.farm { 
+      background: #fee2e2; 
+    }
+    
+    .task-zone.repair { 
+      background: #d1fae5; 
+    }
+    
+    .task-zone.wood { 
+      background: #fef3c7; 
+    }
+    
+    .task-zone.gold { 
+      background: #fde68a; 
+    }
+    
+    .task-zone.stone { 
+      background: #e5e7eb; 
+    }
+    
+    .task-zone.closedeepfish,
+    .task-zone.fardeepfish,
+    .task-zone.shorefish { 
+      background: #bfdbfe; 
+    }
+
+    /* Villager items */
+    .villager { 
+	  display: inline-flex; 
+	  align-items: center; 
+	  gap: 0.25rem; 
+	  padding: 0.25rem; 
+	  margin: 0.25rem; 
+	  border: 2px solid transparent; 
+	  border-radius: 0.25rem; 
+	  cursor: grab;
+	  max-width: 100%;
+	  overflow: hidden;
+	  white-space: nowrap;
+	  text-overflow: ellipsis;
+	}
+    
+    .villager.selected { 
+      outline: 3px dashed #000; 
+    }
+    
+    .villager img { 
+      width: 42px; 
+      height: 42px; 
+    }
+
+    /* Container & selection */
+    #villagers { 
+      position: relative; 
+      background: #fff; 
+      padding: 0.5rem; 
+      border-radius: 0.25rem; 
+      min-height: 4rem; 
+    }
+    
+    .selection-rectangle { 
+      position: absolute; 
+      border: 1px dashed #000; 
+      background: rgba(0,0,255,0.1); 
+      pointer-events: none; 
+      display: none; 
+    }
+
+    /* Build zones */
+    .build-zone { 
+      border: 2px dashed #93c5fd; 
+      border-radius: 0.5rem; 
+      padding: 0.5rem; 
+      margin: 0.25rem 0; 
+      font-size: 0.875rem; 
+    }
+    
+    .build-zone.dragover { 
+      background: #bfdbfe; 
+    }
+    
+    .workers { 
+      font-size: 0.75rem; 
+      color: #555; 
+      margin-top: 0.25rem; 
+    }
+
+    /* Progress bars */
+    .progress-bar { 
+      background: #ddd; 
+      border-radius: 0.25rem; 
+      height: 0.5rem; 
+      overflow: hidden; 
+      margin-top: 0.25rem; 
+    }
+    
+    .progress-inner { 
+      background: #3b82f6; 
+      height: 100%; 
+    }
+
+    /* Resources */
+    .resource-pill { 
+      padding: 0.25rem 0.5rem; 
+      border-radius: 0.25rem; 
+      font-weight: bold; 
+      margin-right: 0.5rem; 
+      font-size: 0.875rem; 
+    }
+    
+    .res-food { 
+      background: #fee2e2; 
+      color: #991b1b; 
+    }
+    
+    .res-wood { 
+      background: #fef3c7; 
+      color: #78350f; 
+    }
+    
+    .res-gold { 
+      background: #fde68a; 
+      color: #92400e; 
+    }
+    
+    .res-stone { 
+      background: #e5e7eb; 
+      color: #1f2937; 
+    }
+
+    /* Military icons */
+    #scout-icon { 
+      width: 24px; 
+      height: 24px; 
+      margin-left: 0.5rem; 
+      cursor: pointer; 
+      vertical-align: middle; 
+    }
+    
+    #militia-icon { 
+      width: 24px; 
+      height: 24px; 
+      margin-left: 0.5rem; 
+      cursor: pointer; 
+      vertical-align: middle; 
+    }
+    
+    /* Tables */
+    #log-table { 
+	  width: 100%; 
+	  border-collapse: collapse; 
+	  margin-top: 0.5rem;
+	  table-layout: fixed;
+	  min-width: 0;
+	}
+    
+    #log-table th,
+    #log-table td {
+	  border: 1px solid #ddd; 
+	  padding: 0.4rem; 
+	  font-size: 0.875rem;
+	  word-wrap: break-word;
+	  overflow: hidden;
+	}
+    
+    #log-table th { 
+      background: #f3f4f6; 
+    }
+    
+    .delete-btn { 
+      background: #ef4444; 
+      color: #fff; 
+      border: none; 
+      border-radius: 0.25rem; 
+      padding: 0.25rem 0.4rem; 
+      cursor: pointer; 
+      font-size: 0.75rem; 
+    }
+    
+    .delete-btn:hover { 
+      background: #dc2626; 
+    }
+
+    /* History cards */
+    .history-card { 
+      background: #fff; 
+      border: 1px solid #ddd; 
+      padding: 0.3rem; 
+      border-radius: 0.3rem; 
+      margin-bottom: 0.3rem; 
+      font-size: 0.75rem;
+    }
+    
+    .history-card h3 { 
+      margin-bottom: 0.2rem; 
+      font-size: 0.75rem; 
+      font-weight: bold;
+    }
+
+    /* Building age color coding */
+    .building-dark { 
+      background-color: #1f2937 !important; 
+      color: white !important; 
+    }
+    
+    .building-feudal { 
+      background-color: #1d4ed8 !important; 
+      color: white !important; 
+    }
+    
+    .building-castle { 
+      background-color: #7c3aed !important; 
+      color: white !important; 
+    }
+    
+    .building-imperial { 
+      background-color: #f59e0b !important; 
+      color: white !important; 
+    }
+
+	/* Dark mode styles */
+	body.dark-mode {
+	  background-color: #1f2937;
+	  color: #f9fafb;
+	  width: 100vw;
+	  overflow-x: hidden;
+	}
+
+	.main-content {
+	  display: flex;
+	  flex: 1;
+	  overflow: hidden;
+	}
+
+	.footer {
+	  background: #f3f4f6;
+	  border-top: 1px solid #ddd;
+	  padding: 0.5rem;
+	  text-align: center;
+	  font-size: 0.875rem;
+	  color: #6b7280;
+	  flex-shrink: 0;
+	}
+	
+	body.dark-mode .footer {
+	  background: #374151;
+	  border-color: #4b5563;
+	  color: #d1d5db;
+	}
+	
+	body.dark-mode #civ-panel,
+	body.dark-mode #build-order-panel {
+	  background: #374151;
+	  border-color: #4b5563;
+	}
+
+	body.dark-mode #main {
+	  background-color: #1f2937;
+	}
+
+	body.dark-mode .bg-white {
+	  background-color: #374151 !important;
+	  color: #f9fafb !important;
+	}
+
+	body.dark-mode .bg-gray-50 {
+	  background-color: #4b5563 !important;
+	}
+
+	body.dark-mode .border-gray-300 {
+	  border-color: #6b7280 !important;
+	}
+
+	body.dark-mode .task-zone {
+	  border-color: #6b7280;
+	  color: #1f2937;
+	}
+
+	body.dark-mode .build-zone {
+	  border-color: #6b7280;
+	  background-color: #4b5563;
+	  color: #f9fafb;
+	}
+
+	body.dark-mode #log-table th {
+	  background: #4b5563;
+	  color: #f9fafb;
+	  table-layout: fixed;
+	}
+
+	body.dark-mode #log-table td {
+	  border-color: #6b7280;
+	  background-color: #374151;
+	  color: #f9fafb;
+	  word-wrap: break-word;
+	  overflow: hidden;
+	}
+
+	body.dark-mode .history-card {
+	  background: #4b5563;
+	  border-color: #6b7280;
+	  color: #f9fafb;
+	}
+	
+	body.dark-mode .villager {
+	  background-color: #4b5563;
+	  color: #f9fafb;
+	}
+
+	body.dark-mode .villager.selected {
+	  background-color: #6b7280;
+	}
+	
+	body.dark-mode .workers {
+	  color: #d1d5db !important;
+	}
+
+	body.dark-mode .build-zone {
+	  border-color: #6b7280;
+	  background-color: #4b5563;
+	  color: #f9fafb;
+	}
+
+	body.dark-mode .build-zone .workers {
+	  color: #d1d5db !important;
+	}
+
+	body.dark-mode .progress-bar {
+	  background: #6b7280 !important;
+	}
+  </style>
+</head>
+
+<body>
+  <div class="main-content">
+	  <!-- LEFT PANEL -->
+	  <div class="w-64 border-r border-gray-300 bg-gray-50 p-4 flex flex-col gap-4" style="height: calc(100vh - 60px); overflow-y: auto;">
+		<!-- Civilizations -->
+		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
+		  <h2 class="font-bold mb-2">Civilizations</h2>
+		  <div class="space-y-1">
+			<label class="block">
+			  <input type="radio" name="civ" value="generic" checked> Generic
+			</label>
+			<label class="block">
+			  <input type="radio" name="civ" value="britons"> Britons
+			</label>
+			<label class="block">
+			  <input type="radio" name="civ" value="franks"> Franks
+			</label>
+			<label class="block">
+			  <input type="radio" name="civ" value="mongols"> Mongols
+			</label>
+			<label class="block">
+			  <input type="radio" name="civ" value="maya"> Maya
+			</label>
+			<label class="block">
+			  <input type="radio" name="civ" value="wu"> Wu
+			</label>
+		  </div>
+		</div>
+		
+		<!-- Military units -->
+		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
+		  <h2 class="font-bold mb-2">Military units</h2>
+		  <ul id="military-units-list" class="space-y-1">
+			<!-- Units will be dynamically added here -->
+		  </ul>
+		</div>
+		
+		<!-- Build Order -->
+		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
+		  <h2 class="font-bold mb-2">Build Order</h2>
+		  <ul id="build-order-list" class="list-disc pl-5"></ul>
+		</div>
+	  </div>
+
+	  <!-- MIDDLE PANEL (Main content or whatever) -->
+	  <div id="main" class="flex-1 overflow-y-auto p-4">
+		<div class="flex space-x-2 mb-4">
+		  <button id="btn-train" class="px-3 py-1 bg-green-600 text-white rounded text-sm">
+			Train Villager (−50 Food)
+		  </button>
+		  <label class="inline-flex items-center space-x-1 text-sm">
+			<input type="checkbox" id="chk-auto"/>
+			<span>Auto-Train every 25s</span>
+		  </label>
+		  <button id="btn-cycle" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+			Process 5s
+		  </button>
+		  <button id="btn-cycle-25" class="px-3 py-1 bg-blue-700 text-white rounded text-sm">
+			Process 25s
+		  </button>
+		  <button id="btn-reset" class="px-3 py-1 bg-gray-600 text-white rounded text-sm">
+			Reset
+		  </button>
+		  <button id="btn-drop" class="px-3 py-1 bg-yellow-600 text-white rounded text-sm">
+			Force Drop-Off
+		  </button>
+		  <button id="btn-undo" class="px-3 py-1 bg-red-600 text-white rounded text-sm">
+			Undo
+		  </button>
+		  <button id="btn-ninjalui" class="px-3 py-1 bg-purple-600 text-white rounded text-sm">
+			Ninjalui
+		  </button>
+		  <button id="btn-theme-toggle" class="px-3 py-1 bg-gray-800 text-white rounded text-sm">
+			  🌙 Dark
+			</button>
+		</div>
+
+		<div id="resources" class="bg-white p-2 rounded shadow flex items-center mb-4"></div>
+		<div id="tasks" class="bg-white p-2 rounded shadow flex flex-wrap gap-2 mb-4" style="min-width: 0; overflow: hidden;"></div>
+		<div id="villagers" class="mb-4"></div>
+		<div id="fishing-boat" class="mt-4 flex flex-wrap gap-2"></div>
+		
+		<div class="bg-white p-2 rounded shadow mb-4 flex gap-4" style="min-width: 0;">
+		  <div style="flex: 0 0 44%; min-width: 0;">
+			<h2 class="font-bold text-sm mb-1">Buildings</h2>
+			<div id="buildings" class="grid grid-cols-3 gap-2" style="min-width: 0;"></div>
+		  </div>
+		  <div style="flex: 0 0 34%; min-width: 0;">
+			<h2 class="font-bold text-sm mb-1">Technologies</h2>
+			<div id="technologies" class="grid grid-cols-6 gap-2 justify-items-center items-center" style="min-width: 0;"></div>
+		  </div>
+		  <div style="flex: 0 0 20%; min-width: 0; overflow: hidden;">
+			  <h2 class="font-bold text-sm mb-1">Military Units</h2>
+			  <div id="militia-units" class="flex flex-wrap gap-2" style="max-width: 100%; overflow: hidden;"></div>
+			</div>
+		</div>
+
+		<div class="bg-white p-2 rounded shadow mb-4">
+		  <h2 class="font-bold text-sm mb-1">Active Builds & Training</h2>
+		  <div id="active-builds"></div>
+		</div>
+
+		<div class="bg-white p-2 rounded shadow mb-4">
+		  <h2 class="font-bold text-sm mb-1">Build Order Timeline</h2>
+		  <div id="log-container" style="max-height: 300px; overflow-y: auto;">
+			<table id="log-table">
+			  <thead>
+				<tr>
+					<th style="width: 8%;">Time</th>
+					<th style="width: 32%;">Action</th>
+					<th style="width: 10%;">Food</th>
+					<th style="width: 10%;">Wood</th>
+					<th style="width: 10%;">Gold</th>
+					<th style="width: 10%;">Stone</th>
+					<th style="width: 8%;">Vills</th>
+					<th style="width: 8%;">Pop</th>
+					<th style="width: 4%; "></th>
+				</tr>
+			  </thead>
+			  <tbody id="log-body"></tbody>
+			</table>
+		  </div>
+		</div>
+
+		<div class="bg-white p-2 rounded shadow mb-4">
+		  <h2 class="font-bold text-sm mb-1">Worker History</h2>
+		  <div style="max-height: 400px; overflow-y: auto;">
+			<div id="history-cards" class="grid grid-cols-7 gap-2"></div>
+		  </div>
+		</div>
+	  </div>
+
+	  <!-- RIGHT PANEL -->
+		<div class="w-64 border-l border-gray-300 bg-gray-50 p-4 flex flex-col gap-4" style="height: calc(100vh - 60px); overflow-y: auto;">
+		<div class="bg-white p-2 rounded shadow overflow-auto" style="flex: 0 0 25%;">
+		  <h2 class="font-bold mb-2">Civilian Units</h2>
+		  <ul class="space-y-1" id="civilian-units-list">
+			<!-- Units -->
+		  </ul>
+			<!-- Discord Banner/Link -->
+			</div>
+		
+		<!-- Buildings -->
+		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
+		  <h2 class="font-bold mb-2">Buildings</h2>
+		  <ul id="building-list" class="list-disc pl-5 space-y-1">
+		  </ul>
+		</div>
+		<div class="bg-white p-2 rounded shadow cursor-pointer hover:bg-blue-50 hover:shadow-xl transform hover:scale-105 hover:transition-all hover:duration-200" onclick="window.open('https://discord.gg/AwZbXAAHG7', '_blank')">
+		  <img src="lelegion.png" alt="Join our Discord" class="w-full h-auto rounded">
+		</div>
+	  </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Developed by <strong>Sokół </strong> &nbsp;- ©2025
+  </div>
+
+  <script>
+    // CONFIG
+    const CYCLE = 5;
+    const TRAIN_T = 25;
+    
+    const FOOD_RATE = {
+      berries: 18.6 / 60,
+      sheep: 19.8 / 60,
+      hunt: 24.6 / 60,
+      fish: 25.8 / 60,
+      farm: 20.4 / 60,
+      shorefish: 22.8 / 60,
+      closedeepfish: 0.49 * 0.95,
+      fardeepfish: 0.49 * (0.82 + Math.random() * 0.04)
+    };
+    
+    const FLAT_RATE = 8 / 25;
+    
+    const CAPACITY = {
+      idle: 0,
+      berries: 10,
+      sheep: 10,
+      hunt: 35,
+      fish: 10,
+      farm: 10,
+      wood: 10,
+      gold: 10,
+      stone: 10,
+      closedeepfish: 15,
+      fardeepfish: 15,
+      shorefish: 15
+    };
+
+    const BUILD_COST = {
+      // Dark Age
+      House: { wood: 25 },
+      // Feudal Age
+      Mill: { wood: 100 },
+      LumberCamp: { wood: 100 },
+      MiningCamp: { wood: 100 },
+      Dock: { wood: 150 },
+      Barracks: { wood: 175 },
+      ArcheryRange: { wood: 175 },
+      Stable: { wood: 175 },
+      Blacksmith: { wood: 150 },
+      Market: { wood: 175 },
+      Tower: { wood: 125, stone: 125 },
+      // Castle Age
+      Castle: { stone: 650 },
+      Monastery: { wood: 175 },
+      SiegeWorkshop: { wood: 200 },
+      University: { wood: 200 },
+      TownCenter: { wood: 275, stone: 100 }
+    };
+
+    const BUILD_TIME = {
+      House: 25,
+      Mill: 35,
+      LumberCamp: 35,
+      MiningCamp: 35,
+      Barracks: 50,
+      ArcheryRange: 50,
+      Stable: 50,
+      Blacksmith: 40,
+      Market: 60,
+      Dock: 35,
+      Castle: 200,
+      Monastery: 40,
+      SiegeWorkshop: 40,
+      University: 60,
+      TownCenter: 200,
+      Tower: 200
+    };
+
+    const BUILDING_AGES = {
+      // Dark Age
+      House: 'Dark',
+      Mill: 'Dark',
+      LumberCamp: 'Dark',
+      MiningCamp: 'Dark',
+      Dock: 'Dark',
+      Barracks: 'Dark',
+      // Feudal Age
+      ArcheryRange: 'Feudal',
+      Stable: 'Feudal',
+      Blacksmith: 'Feudal',
+      Market: 'Feudal',
+      Tower: 'Feudal',
+      // Castle Age
+      Castle: 'Castle',
+      Monastery: 'Castle',
+      SiegeWorkshop: 'Castle',
+      University: 'Castle',
+      TownCenter: 'Castle'
+    };
+
+    // STATE
+    let nextBuildUid = 1;
+    let timeSec, res, vils, builds, logEntries, trainBuild, autoTrain;
+    let nextBuildIds = {};
+    let totalGathered, totalSpent, popCap;
+    let simpleHistory = [];
+    let scoutOn = true;
+    let currentAge = 'Dark';
+    let isAdvancing = false;
+    let fishingShipActive = [];
+	let transportshipActive = [];
+    let nextFishingShipId = 1;
+	let nextTransportshipId = 1;
+    let civLocked = false;
+    let researchedTechs = {
+      // Dark Age
+      loom: false,
+      // Feudal Age
+      wheelbarrow: false,
+      horsecollar: false,
+      doublebitaxe: false,
+      goldmining: false,
+      stonemining: false,
+      fletching: false,
+      forging: false,
+      scalemailarmor: false,
+      scalebardingarmor: false,
+      paddedarcherarmor: false,
+      bloodlines: false,
+      townwatch: false,
+      // Castle Age - University
+      ballistics: false,
+      guardtower: false,
+      // Castle Age - Monastery
+      redemption: false,
+      atonement: false,
+      sanctity: false,
+      fervor: false,
+      // Castle Age - Blacksmith
+      ironcasting: false,
+      leatherarcherarmor: false,
+      chainbardingarmor: false,
+      chainmailarmor: false,
+      bodkinarrow: false,
+      platebardingarmor: false,
+      platemailarmor: false,
+      // Naval techs
+      warship: false,
+      galleontechs: false
+    };
+
+    let researchedUpgrades = {
+	  maa: false,
+	  longswordsman: false,
+	  eaglewarrior: false,
+	  eliteskirmisher: false,
+	  crossbowman: false,
+	  pikeman: false,
+	  lightcavalry: false,
+	  wargalley: false
+	};
+
+    let loomResearched = false;
+    let tcCount = 1;
+
+    // Unified training queue & unit config
+    let trainingQueue = [];
+    let militiaActive = [];
+	let scoutActive = [];
+    let archerActive = [];
+    let spearmanActive = [];
+    let eaglescoutActive = [];
+	let knightActive = [];
+    let monkActive = [];
+    let mangonelActive = [];
+    let galleyActive = [];
+	let firegalleyActive = [];
+	let skirmisherActive = [];
+	let camelActive = [];
+	let steppelancerActive = [];
+	let jianswordsmanActive = [];
+	let cavalryarcherActive = [];
+	let heiguangcavalryActive = [];
+	let scorpionActive = [];
+    let nextMilId = 1;
+    let nextVilId = 4;
+    let nextScoutId = 1;
+    let nextArcherId = 1;
+    let nextSpearmanId = 1;
+    let nextEaglescoutId = 1;
+    let nextKnightId = 1;
+    let nextMonkId = 1;
+    let nextMangonelId = 1;
+    let nextGalleyId = 1;
+	let nextFiregalleyId = 1;
+	let nextSkirmisherId = 1;
+	let nextCamelId = 1;
+	let nextSteppeLancerId = 1;
+	let nextJianswordsmanId = 1;
+	let nextCavalryarcherId = 1;
+	let nextHeiguangcavalryId = 1;
+	let nextScorpionId = 1;
+    let selectedCiv = 'generic';
+	let earlyBarracksAlertShown = false;
+
+    // Dynamic ID counter system
+    const unitIdCounters = {};
+
+    function getNextUnitId(unitType) {
+      if (!unitIdCounters[unitType]) {
+        unitIdCounters[unitType] = 1;
+      }
+      return unitIdCounters[unitType]++;
+    }
+	
+	function resetUnitIdCounters() {
+      Object.keys(unitIdCounters).forEach(key => {
+        unitIdCounters[key] = 1;
+      });
+      // Special cases
+      unitIdCounters.villager = 4; // Start at 4 since we begin with 3 villagers
+    }
+	
+	// Dynamic unit array registry
+	const unitArrayRegistry = {};
+	function registerUnitArray(unitType, array) {
+	  unitArrayRegistry[unitType] = array;
+	}
+	function getUnitArrayDynamic(unitType) {
+	  return unitArrayRegistry[unitType] || null;
+	}
+	// Register all existing arrays
+	registerUnitArray('militia', militiaActive);
+	registerUnitArray('knight', knightActive);
+	registerUnitArray('monk', monkActive);
+	registerUnitArray('mangonel', mangonelActive);
+	registerUnitArray('galley', galleyActive);
+	registerUnitArray('scout', scoutActive);
+	registerUnitArray('archer', archerActive);
+	registerUnitArray('spearman', spearmanActive);
+	registerUnitArray('eaglescout', eaglescoutActive);
+	registerUnitArray('fishingship', fishingShipActive);
+	registerUnitArray('transportship', transportshipActive);
+	registerUnitArray('firegalley', firegalleyActive);
+	registerUnitArray('skirmisher', skirmisherActive);
+	registerUnitArray('camel', camelActive);
+	registerUnitArray('steppelancer', steppelancerActive);
+	registerUnitArray('jianswordsman', jianswordsmanActive);
+	registerUnitArray('cavalryarcher', cavalryarcherActive);
+	registerUnitArray('heiguangcavalry', heiguangcavalryActive);
+	registerUnitArray('scorpion', scorpionActive);
+
+    const CIVILIZATIONS = {
+      generic: { name: 'Generic', bonuses: {} },
+      britons: {
+        name: 'Britons',
+        bonuses: {
+          shepherdWorkRate: 1.25,
+          archeryRangeWorkRate: 1.1
+        }
+      },
+      franks: {
+        name: 'Franks',
+        bonuses: {
+          foragerWorkRate: 1.15,
+          castleCostDiscount: 0.25,
+          freeFarmUpgrades: true
+        }
+      },
+      mongols: {
+        name: 'Mongols',
+        bonuses: {
+          hunterWorkRate: 1.4
+        }
+      },
+      maya: {
+        name: 'Maya',
+        bonuses: {
+          extraStartVillager: true,
+          archeryCostReduction: { feudal: 0.1, castle: 0.2, imperial: 0.3 }
+        }
+      },
+      wu: {
+        name: 'Wu',
+        bonuses: {
+          buildingFoodBonus: 65,
+          houseBuildSpeed: 2.0
+        }
+      }
+    };
+	
+	function canTrainUnit(unitType) {
+	  const unitConfig = UNIT_TYPES[unitType];
+	  if (!unitConfig || !unitConfig.civilizations) {
+		return true; // No restrictions
+	  }
+	  return unitConfig.civilizations.includes(selectedCiv);
+	}
+
+	const UNIT_TYPES = {
+	  villager: {
+		trainTime: 25,
+		cost: { food: 50 },
+		building: 'TownCenter',
+		age: 'Dark',
+		parallelSlots: () => tcCount
+	  },
+
+	  fishingship: {
+		trainTime: 40,
+		cost: { wood: 75 },
+		building: 'Dock',
+		age: 'Dark',
+		parallelSlots: () => (nextBuildIds['Dock'] - 1) - builds.filter(b => b.name === 'Dock').length
+	  },
+	  
+	  transportship: {
+		  trainTime: 46,
+		  cost: { wood: 125 },
+		  building: 'Dock',
+		  age: 'Dark',
+		  parallelSlots: () => (nextBuildIds['Dock'] - 1) - builds.filter(b => b.name === 'Dock').length
+		},
+
+	  militia: {
+		trainTime: 21,
+		cost: { food: 50, gold: 20 },
+		building: 'Barracks',
+		age: 'Dark',
+		upgrades: ['maa', 'longswordsman'],
+		parallelSlots: () => (nextBuildIds['Barracks'] - 1) - builds.filter(b => b.name === 'Barracks').length
+	  },
+
+	  scout: {
+		trainTime: 30,
+		cost: { food: 80 },
+		building: 'Stable',
+		age: 'Feudal',
+		upgrades: ['lightcavalry'],
+		parallelSlots: () => (nextBuildIds['Stable'] - 1) - builds.filter(b => b.name === 'Stable').length
+	  },
+
+	  archer: {
+		trainTime: 35,
+		cost: { wood: 25, gold: 45 },
+		building: 'ArcheryRange',
+		age: 'Feudal',
+		upgrades: ['crossbowman'],
+		parallelSlots: () => (nextBuildIds['ArcheryRange'] - 1) - builds.filter(b => b.name === 'ArcheryRange').length
+	  },
+
+	  skirmisher: {
+		trainTime: 22,
+		cost: { food: 25, wood: 35 },
+		building: 'ArcheryRange',
+		age: 'Feudal',
+		upgrades: ['eliteskirmisher'],
+		parallelSlots: () => (nextBuildIds['ArcheryRange'] - 1) - builds.filter(b => b.name === 'ArcheryRange').length
+	  },
+
+	  spearman: {
+		trainTime: 22,
+		cost: { food: 35, wood: 25 },
+		building: 'Barracks',
+		age: 'Feudal',
+		upgrades: ['pikeman'],
+		parallelSlots: () => (nextBuildIds['Barracks'] - 1) - builds.filter(b => b.name === 'Barracks').length
+	  },
+
+	  eaglescout: {
+		trainTime: 32,
+		cost: { food: 25, gold: 50 },
+		building: 'Barracks',
+		age: 'Feudal',
+		civilizations: ['aztecs', 'maya', 'inca'],
+		upgrades: ['eaglewarrior'],
+		parallelSlots: () => (nextBuildIds['Barracks'] - 1) - builds.filter(b => b.name === 'Barracks').length
+	  },
+	  
+	  jianswordsman: {
+		  trainTime: 28,
+		  cost: { food: 60, gold: 40 },
+		  building: 'Barracks',
+		  age: 'Castle',
+		  civilizations: ['wu'],
+		  parallelSlots: () => (nextBuildIds['Barracks'] - 1) - builds.filter(b => b.name === 'Barracks').length
+		},
+		
+		cavalryarcher: {
+		  trainTime: 37,
+		  cost: { wood: 40, gold: 60 },
+		  building: 'ArcheryRange',
+		  age: 'Castle',
+		  // upgrades: ['heavycavalryarcher'],
+		  parallelSlots: () => (nextBuildIds['ArcheryRange'] - 1) - builds.filter(b => b.name === 'ArcheryRange').length
+		},
+		
+		heiguangcavalry: {
+		  trainTime: 30,
+		  cost: { food: 60, gold: 75 },
+		  building: 'Stable',
+		  age: 'Castle',
+		  civilizations: ['wu', 'shu', 'wei'],
+		  // upgrades: ['heavyheiguangcavalry'],
+		  parallelSlots: () => (nextBuildIds['Stable'] - 1) - builds.filter(b => b.name === 'Stable').length
+		},
+
+	  camel: {
+		trainTime: 22,
+		cost: { food: 55, gold: 60 },
+		building: 'Stable',
+		civilizations: ['mongols'],
+		age: 'Castle',
+		parallelSlots: () => (nextBuildIds['Stable'] - 1) - builds.filter(b => b.name === 'Stable').length
+	  },
+
+	  galley: {
+		trainTime: 36,
+		cost: { wood: 90, gold: 30 },
+		building: 'Dock',
+		age: 'Feudal',
+		upgrade: 'wargalley',
+		parallelSlots: () => (nextBuildIds['Dock'] - 1) - builds.filter(b => b.name === 'Dock').length
+	  },
+
+	  firegalley: {
+		trainTime: 45,
+		cost: { wood: 75, gold: 45 },
+		building: 'Dock',
+		age: 'Feudal',
+		upgrade: 'wargalley',
+		parallelSlots: () => (nextBuildIds['Dock'] - 1) - builds.filter(b => b.name === 'Dock').length
+	  },
+
+	  steppelancer: {
+		trainTime: 45,
+		cost: { wood: 70, gold: 45 },
+		building: 'Stable',
+		age: 'Castle',
+		civilizations: ['mongols', 'cumans', 'tatars', 'khitans', 'jurchens'],
+		parallelSlots: () => (nextBuildIds['Stable'] - 1) - builds.filter(b => b.name === 'Stable').length
+	  },
+
+	  knight: {
+		trainTime: 30,
+		cost: { food: 60, gold: 75 },
+		building: 'Stable',
+		age: 'Castle',
+		parallelSlots: () => (nextBuildIds['Stable'] - 1) - builds.filter(b => b.name === 'Stable').length
+	  },
+
+	  monk: {
+		trainTime: 51,
+		cost: { gold: 100 },
+		building: 'Monastery',
+		age: 'Castle',
+		parallelSlots: () => (nextBuildIds['Monastery'] - 1) - builds.filter(b => b.name === 'Monastery').length
+	  },
+
+	  mangonel: {
+		trainTime: 46,
+		cost: { wood: 160, gold: 135 },
+		building: 'SiegeWorkshop',
+		age: 'Castle',
+		// upgrades: ['onager'],
+		parallelSlots: () => (nextBuildIds['SiegeWorkshop'] - 1) - builds.filter(b => b.name === 'SiegeWorkshop').length
+	  },
+	  
+	  scorpion: {
+		  trainTime: 30,
+		  cost: { wood: 75, gold: 75 },
+		  building: 'SiegeWorkshop',
+		  age: 'Castle',
+		  // upgrades: ['heavyscorpion'],
+		  parallelSlots: () => (nextBuildIds['SiegeWorkshop'] - 1) - builds.filter(b => b.name === 'SiegeWorkshop').length
+		}
+	};
+
+	const TECH_TYPES = {
+	  // Ages
+	  feudalage: {
+		name: 'Feudal Age',
+		cost: { food: 500 },
+		time: 130,
+		building: 'TownCenter',
+		age: 'Dark',
+		requirement: () => {
+		  const validBuildings = ['Barracks', 'LumberCamp', 'Mill', 'MiningCamp', 'Dock'];
+		  const completed = validBuildings.filter(name =>
+			(nextBuildIds[name] - 1) - builds.filter(b => b.name === name).length > 0
+		  );
+		  return completed.length >= 2;
+		}
+	  },
+
+	  castleage: {
+		name: 'Castle Age',
+		cost: { food: 800, gold: 200 },
+		time: 160,
+		building: 'TownCenter',
+		age: 'Feudal',
+		requirement: () => {
+		  const feudalBuildings = ['ArcheryRange', 'Stable', 'Blacksmith', 'Market'];
+		  const completed = feudalBuildings.filter(name =>
+			(nextBuildIds[name] - 1) - builds.filter(b => b.name === name).length > 0
+		  );
+		  return completed.length >= 2 && currentAge === 'Feudal';
+		}
+	  },
+
+	  // Dark Age Technologies
+	  loom: {
+		name: 'Loom',
+		cost: { gold: 50 },
+		time: 25,
+		building: 'TownCenter',
+		age: 'Dark',
+		requirement: () => true
+	  },
+
+	  // Feudal Age Technologies
+	  wheelbarrow: {
+		name: 'Wheelbarrow',
+		cost: { wood: 175, food: 75 },
+		time: 75,
+		building: 'TownCenter',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  horsecollar: {
+		name: 'Horse Collar',
+		cost: { food: 75, wood: 75 },
+		time: 20,
+		building: 'Mill',
+		age: 'Feudal',
+		excludedCivilizations: ['khitans'],
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  doublebitaxe: {
+		name: 'Double-Bit Axe',
+		cost: { food: 100, wood: 50 },
+		time: 25,
+		building: 'LumberCamp',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  goldmining: {
+		name: 'Gold Mining',
+		cost: { food: 100, wood: 75 },
+		time: 30,
+		building: 'MiningCamp',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  stonemining: {
+		name: 'Stone Mining',
+		cost: { food: 100, wood: 75 },
+		time: 30,
+		building: 'MiningCamp',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  fletching: {
+		name: 'Fletching',
+		cost: { food: 100, wood: 50 },
+		time: 30,
+		building: 'Blacksmith',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  forging: {
+		name: 'Forging',
+		cost: { food: 150 },
+		time: 50,
+		building: 'Blacksmith',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  scalemailarmor: {
+		name: 'Scale Mail Armor',
+		cost: { food: 100 },
+		time: 40,
+		building: 'Blacksmith',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  scalebardingarmor: {
+		name: 'Scale Barding Armor',
+		cost: { food: 150 },
+		time: 45,
+		building: 'Blacksmith',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  paddedarcherarmor: {
+		name: 'Padded Archer Armor',
+		cost: { food: 100 },
+		time: 40,
+		building: 'Blacksmith',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  bloodlines: {
+		name: 'Bloodlines',
+		cost: { food: 150, gold: 100 },
+		time: 50,
+		building: 'Stable',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  townwatch: {
+		name: 'Town Watch',
+		cost: { food: 75 },
+		time: 25,
+		building: 'TownCenter',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  bowsaw: {
+		name: 'Bow Saw',
+		cost: { food: 150, wood: 50 },
+		time: 25,
+		building: 'LumberCamp',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  gambesons: {
+		name: 'Gambesons',
+		cost: { food: 150, wood: 100 },
+		time: 35,
+		building: 'Barracks',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  gillnets: {
+		name: 'Gillnets',
+		cost: { food: 200, wood: 75 },
+		time: 40,
+		building: 'Dock',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  domestication: {
+		name: 'Domestication',
+		cost: { food: 250 },
+		time: 40,
+		building: 'Mill',
+		age: 'Feudal',
+		civilizations: ['khitans'], // Only Khitans can research this
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  husbandry: {
+		name: 'Husbandry',
+		cost: { food: 250 },
+		time: 35,
+		building: 'Stable',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  squires: {
+		name: 'Squires',
+		cost: { food: 100 },
+		time: 35,
+		building: 'Barracks',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+
+	  arson: {
+		name: 'Arson',
+		cost: { food: 350, gold: 150 },
+		time: 50,
+		building: 'Barracks',
+		age: 'Feudal',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  // Castle Age Technologies - University
+	  ballistics: {
+		name: 'Ballistics',
+		cost: { wood: 300, gold: 175 },
+		time: 60,
+		building: 'University',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+	  
+	  siegeengineers: {
+		name: 'Siege Engineers',
+		cost: { wood: 500, gold: 450 },
+		time: 45,
+		building: 'University',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  // Castle Age Technologies - Monastery
+	  redemption: {
+		name: 'Redemption',
+		cost: { gold: 600 },
+		time: 50,
+		building: 'Monastery',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  atonement: {
+		name: 'Atonement',
+		cost: { gold: 325 },
+		time: 40,
+		building: 'Monastery',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  sanctity: {
+		name: 'Sanctity',
+		cost: { gold: 120 },
+		time: 30,
+		building: 'Monastery',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  fervor: {
+		name: 'Fervor',
+		cost: { gold: 140 },
+		time: 45,
+		building: 'Monastery',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  // Castle Age Technologies - Blacksmith
+	  ironcasting: {
+		name: 'Iron Casting',
+		cost: { food: 220, gold: 120 },
+		time: 45,
+		building: 'Blacksmith',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  leatherarcherarmor: {
+		name: 'Leather Archer Armor',
+		cost: { food: 150, gold: 150 },
+		time: 40,
+		building: 'Blacksmith',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  chainbardingarmor: {
+		name: 'Chain Barding Armor',
+		cost: { food: 150, gold: 150 },
+		time: 45,
+		building: 'Blacksmith',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  chainmailarmor: {
+		name: 'Chain Mail Armor',
+		cost: { food: 200, gold: 100 },
+		time: 40,
+		building: 'Blacksmith',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  bodkinarrow: {
+		name: 'Bodkin Arrow',
+		cost: { food: 200, gold: 150 },
+		time: 40,
+		building: 'Blacksmith',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  // Castle Age Technologies - Others
+	  wargalley: {
+		name: 'War Galley',
+		cost: { food: 250, gold: 150 },
+		time: 50,
+		building: 'Dock',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+	  
+	  handcart: {
+		name: 'Hand Cart',
+		cost: { wood: 300, food: 200 },
+		time: 55,
+		building: 'TownCenter',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle' && researchedTechs.wheelbarrow
+	  },
+
+	  heavyplow: {
+		name: 'Heavy Plow',
+		cost: { food: 125, wood: 125 },
+		time: 40,
+		building: 'Mill',
+		age: 'Castle',
+		excludedCivilizations: ['khitans'],
+		requirement: () => currentAge === 'Castle' && researchedTechs.horsecollar
+	  },
+
+	  goldshaftmining: {
+		name: 'Gold Shaft Mining',
+		cost: { food: 200, wood: 150 },
+		time: 40,
+		building: 'MiningCamp',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle' && researchedTechs.goldmining
+	  },
+
+	  stoneshaftmining: {
+		name: 'Stone Shaft Mining',
+		cost: { food: 200, wood: 150 },
+		time: 40,
+		building: 'MiningCamp',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle' && researchedTechs.stonemining
+	  },
+
+	  parthiantactics: {
+		name: 'Parthian Tactics',
+		cost: { food: 200, gold: 250 },
+		time: 65,
+		building: 'ArcheryRange',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  thumbring: {
+		name: 'Thumb Ring',
+		cost: { wood: 300, gold: 200 },
+		time: 45,
+		building: 'ArcheryRange',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  townpatrol: {
+		name: 'Town Patrol',
+		cost: { food: 300, gold: 100 },
+		time: 40,
+		building: 'TownCenter',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle' && researchedTechs.townwatch
+	  },
+
+	  chemistry: {
+		name: 'Chemistry',
+		cost: { food: 300, gold: 200 },
+		time: 100,
+		building: 'University',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  pastoralism: {
+		name: 'Pastoralism',
+		cost: { food: 250, wood: 120 },
+		time: 40,
+		building: 'Mill',
+		age: 'Castle',
+		civilizations: ['khitans'], // Only Khitans can research this
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  // Unit Upgrades
+	  maa: {
+		name: 'Men at Arms',
+		cost: { food: 110, gold: 40 },
+		time: 40,
+		building: 'Barracks',
+		age: 'Feudal',
+		requirement: () => currentAge !== 'Dark'
+	  },
+	  
+	  eaglewarrior: {
+		  name: 'Eagle Warrior',
+		  cost: { food: 200, gold: 200 },
+		  time: 40,
+		  building: 'Barracks',
+		  age: 'Castle',
+		  civilizations: ['aztecs', 'maya', 'inca'],
+		  requirement: () => currentAge === 'Castle'
+		},
+	  
+	  crossbowman: {
+		name: 'Crossbowman',
+		cost: { wood: 25, gold: 25 },
+		time: 35,
+		building: 'ArcheryRange',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+	  
+	  eliteskirmisher: {
+		  name: 'Elite Skirmisher',
+		  cost: { wood: 250, gold: 160 },
+		  time: 45,
+		  building: 'ArcheryRange',
+		  age: 'Castle',
+		  requirement: () => currentAge === 'Castle'
+		},
+
+	  pikeman: {
+		name: 'Pikeman',
+		cost: { food: 215, gold: 90 },
+		time: 45,
+		building: 'Barracks',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+
+	  lightcavalry: {
+		name: 'Light Cavalry',
+		cost: { food: 150, gold: 50 },
+		time: 45,
+		building: 'Stable',
+		age: 'Castle',
+		requirement: () => currentAge === 'Castle'
+	  },
+	  
+	    longswordsman: {
+		  name: 'Longswordsman',
+		  cost: { food: 200, gold: 65 },
+		  time: 45,
+		  building: 'Barracks',
+		  age: 'Castle',
+		  requirement: () => currentAge === 'Castle' && researchedUpgrades.maa  // <-- This is key!
+		},
+
+	  // Imperial Age
+	  transhumance: {
+		name: 'Transhumance',
+		cost: { food: 150, wood: 200 },
+		time: 40,
+		building: 'Mill',
+		age: 'Imperial',
+		civilizations: ['khitans'], // Only Khitans can research this
+		requirement: () => currentAge === 'Imperial'
+	  }
+	};
+
+    // RECORD VIL HISTORY
+    function recordHistory(v, task) {
+      const hist = v.hist;
+      const last = hist[hist.length - 1];
+      if (last && last.t === timeSec) {
+        last.task = task;
+      } else {
+        hist.push({ t: timeSec, task });
+      }
+    }
+
+    // UNDO STACK
+    const costMap = {
+      villager: { food: 50 },
+      militia: { food: 50, gold: 20 },
+      fishingship: { wood: 75 },
+	  transportship: { wood: 125 },
+      scout: { food: 80 },
+      archer: { wood: 25, gold: 45 },
+      spearman: { food: 35, wood: 25 },
+      eaglescout: { food: 25, gold: 50 },
+      knight: { food: 60, gold: 75 },
+      monk: { gold: 100 },
+      mangonel: { wood: 160, gold: 135 },
+      galley: { wood: 90, gold: 30 }
+    };
+
+    let undoStack = [];
+
+    function pushState() {
+      undoStack.push(JSON.parse(JSON.stringify({
+        timeSec,
+        res,
+        vils,
+        builds,
+        logEntries,
+        trainBuild,
+        autoTrain,
+        unitIdCounters: { ...unitIdCounters },
+        nextBuildIds,
+        totalGathered,
+        totalSpent,
+        popCap,
+        simpleHistory,
+        scoutOn,
+        trainingQueue,
+        militiaActive,
+        knightActive,
+        monkActive,
+        mangonelActive,
+        galleyActive,
+		firegalleyActive,
+        scoutActive,
+        archerActive,
+        spearmanActive,
+        eaglescoutActive,
+		skirmisherActive,    
+		camelActive,         
+		steppelancerActive,  
+        currentAge,
+        tcCount,
+        loomResearched,
+        researchedTechs,
+        researchedUpgrades,
+        fishingShipActive
+      })));
+    }
+
+    function handleUndo() {
+      if (!undoStack.length) {
+        alert('Nothing to undo');
+        return;
+      }
+      const st = undoStack.pop();
+      ({
+        timeSec,
+        res,
+        vils,
+        builds,
+        logEntries,
+        trainBuild,
+        autoTrain,
+        unitIdCounters,
+        nextBuildIds,
+        totalGathered,
+        totalSpent,
+        popCap,
+        simpleHistory,
+        scoutOn,
+        trainingQueue,
+        militiaActive,
+        knightActive,
+        monkActive,
+        mangonelActive,
+        galleyActive,
+		firegalleyActive,
+        scoutActive,
+        archerActive,
+        spearmanActive,
+        eaglescoutActive,
+		skirmisherActive,    
+		camelActive,         
+		steppelancerActive, 
+        currentAge,
+        tcCount,
+        loomResearched,
+        researchedTechs,
+        researchedUpgrades,
+        fishingShipActive
+      } = st);
+
+      scoutImg.style.opacity = scoutOn ? '1' : '0.55';
+      renderAll();
+    }
+
+    // DOM refs
+    const rd = document.getElementById('resources');
+    const td = document.getElementById('tasks');
+    const vd = document.getElementById('villagers');
+    const bd = document.getElementById('buildings');
+    const ab = document.getElementById('active-builds');
+    const lb = document.getElementById('log-body');
+    const hd = document.getElementById('history-cards');
+    const chk = document.getElementById('chk-auto');
+    const buildOrderList = document.getElementById('build-order-list');
+
+    // Scout icon
+    const scoutImg = document.createElement('img');
+    scoutImg.id = 'scout-icon';
+    scoutImg.src = 'icons/military-icons/scout-icon.png';
+    scoutImg.title = 'Scout (uses 1 pop slot)';
+    scoutImg.style.opacity = '1';
+
+    // Necro-detection
+	let scoutClickCount = 0;
+	let scoutClickTimer = null;
+
+	scoutImg.addEventListener('click', () => {
+	  pushState();
+	  
+	  // Necromancer detection
+	  scoutClickCount++;
+	  if (scoutClickTimer) {
+		clearTimeout(scoutClickTimer);
+	  }
+	  scoutClickTimer = setTimeout(() => {
+		scoutClickCount = 0;
+	  }, 15000); // Reset counter after 15 seconds
+	  
+	  if (scoutClickCount >= 6) {
+		alert("Are you a Necromancer? Let Richard's body rest in peace!");
+		scoutClickCount = 0; // Reset counter after showing alert
+		return;
+	  }
+	  
+	  scoutOn = !scoutOn;
+	  scoutImg.style.opacity = scoutOn ? '1' : '0.55';
+	  
+	  // Handle scout spawning/despawning
+	  if (scoutOn) {
+		// Spawn scout if none exists
+		if (scoutActive.length === 0) {
+		  scoutActive.push(getNextUnitId('scout'));
+		}
+	  } else {
+		// Remove all scouts
+		scoutActive = [];
+	  }
+	  
+	  renderAll();
+	});
+
+    // Selection rectangle
+    const selRect = document.createElement('div');
+    selRect.className = 'selection-rectangle';
+    vd.appendChild(selRect);
+    let isSelecting = false;
+    let startX, startY, containerRect;
+
+    // INITIALIZE
+    function init() {
+      civLocked = false;
+	  loomResearched = false;
+	  earlyBarracksAlertShown = false;
+      Object.keys(researchedTechs).forEach(key => researchedTechs[key] = false);
+      Object.keys(researchedUpgrades).forEach(key => researchedUpgrades[key] = false);
+      tcCount = 1;
+      timeSec = 0;
+      undoStack = [];
+      res = { food: 200, wood: 200, gold: 100, stone: 200 };
+      totalGathered = { food: 0, wood: 0, gold: 0, stone: 0 };
+      totalSpent = { food: 0, wood: 0, gold: 0, stone: 0 };
+      nextBuildUid = 1;
+      trainingQueue = [];
+		militiaActive = [];
+		scoutActive = [];
+		archerActive = [];
+		skirmisherActive = [];      
+		spearmanActive = [];
+		eaglescoutActive = [];
+		camelActive = [];           
+		steppelancerActive = [];    
+		fishingShipActive = [];
+		transportshipActive = [];  
+		knightActive = [];
+		monkActive = [];
+		mangonelActive = [];
+		galleyActive = [];
+		firegalleyActive = [];
+		jianswordsmanActive = [];
+		cavalryarcherActive = [];
+		heiguangcavalryActive = [];
+		scorpionActive = [];
+      resetUnitIdCounters();
+      scoutClickCount = 0;
+	  if (scoutClickTimer) {
+		clearTimeout(scoutClickTimer);
+		scoutClickTimer = null;
+	  }
+      if (selectedCiv === 'maya') {
+        unitIdCounters.villager = 5; // Maya starts with 4 villagers, next will be #5
+      }
+      
+      popCap = 5;
+      currentAge = 'Dark';
+      isAdvancing = false;
+
+      vils = [
+        {
+          id: 1,
+          task: 'idle',
+          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+          hist: [{ t: 0, task: 'idle' }],
+          selected: false
+        },
+        {
+          id: 2,
+          task: 'idle',
+          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+          hist: [{ t: 0, task: 'idle' }],
+          selected: false
+        },
+        {
+          id: 3,
+          task: 'idle',
+          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+          hist: [{ t: 0, task: 'idle' }],
+          selected: false
+        }
+      ];
+      // For Maya civilization
+      if (selectedCiv === 'maya') {
+        res.food = 150;
+        vils.push({
+          id: 4,
+          task: 'idle',
+          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+          hist: [{ t: 0, task: 'idle' }],
+          selected: false
+        });
+        nextVilId = 5;
+        popCap = 5;
+      }
+	  // Initialize starting military units based on civilization
+		if (selectedCiv === 'maya' || selectedCiv === 'inca' || selectedCiv === 'aztecs') {
+		  eaglescoutActive.push(getNextUnitId('eaglescout'));
+		} else if (selectedCiv === 'gurjaras') {
+		  // Camel Scout - DOESN'T EXIST YET!
+		  scoutActive.push(getNextUnitId('scout'));
+		} else {
+		  // Regular scout
+		  scoutActive.push(getNextUnitId('scout'));
+		}
+
+      builds = [];
+      logEntries = [];
+      trainBuild = null;
+      autoTrain = false;
+      chk.checked = false;
+      simpleHistory = [];
+      scoutOn = true;
+      scoutImg.style.opacity = '1';
+      nextBuildIds = {};
+      
+      Object.keys(BUILD_COST).forEach(name => {
+        nextBuildIds[name] = 1;
+      });
+
+      // DRAG-SELECT handlers
+      vd.addEventListener('mousedown', e => {
+        if (e.button !== 0 || e.target !== vd) return;
+        if (!e.shiftKey) vils.forEach(v => v.selected = false);
+        isSelecting = true;
+        containerRect = vd.getBoundingClientRect();
+        startX = e.clientX - containerRect.left;
+        startY = e.clientY - containerRect.top;
+        selRect.style.left = startX + 'px';
+        selRect.style.top = startY + 'px';
+        selRect.style.width = '0';
+        selRect.style.height = '0';
+        selRect.style.display = 'block';
+      });
+
+      vd.addEventListener('mousemove', e => {
+        if (!isSelecting) return;
+        const x = e.clientX - containerRect.left;
+        const y = e.clientY - containerRect.top;
+        const rx = Math.min(x, startX);
+        const ry = Math.min(y, startY);
+        const rw = Math.abs(x - startX);
+        const rh = Math.abs(y - startY);
+        selRect.style.left = rx + 'px';
+        selRect.style.top = ry + 'px';
+        selRect.style.width = rw + 'px';
+        selRect.style.height = rh + 'px';
+      });
+
+      document.addEventListener('mouseup', e => {
+        if (!isSelecting) return;
+        const R = selRect.getBoundingClientRect();
+        isSelecting = false;
+        selRect.style.display = 'none';
+
+        vils.forEach(v => {
+          const el = Array.from(vd.children).find(c => c.textContent === '#' + v.id && c.classList.contains('villager'));
+          if (el) {
+            const B = el.getBoundingClientRect();
+            if (!(B.right < R.left || B.left > R.right || B.bottom < R.top || B.top > R.bottom)) {
+              v.selected = true;
+            }
+          }
+        });
+        pushState();
+        renderAll();
+      });
+
+      renderZones();
+      renderAll();
+      renderSimpleHistory();
+    }
+
+    function renderMilitaryUnitsList() {
+	  const list = document.getElementById('military-units-list');
+	  list.innerHTML = '';
+
+	  // Generate units list dynamically from UNIT_TYPES
+	  Object.entries(UNIT_TYPES).forEach(([key, config]) => {
+		// Skip civilian units
+		if (key === 'villager' || key === 'fishingship' || key === 'transportship') return;
+		
+		// Check if unit should be visible based on current age
+		let shouldShow = false;
+		if (config.age === 'Dark') shouldShow = true;
+		if (config.age === 'Feudal' && currentAge !== 'Dark') shouldShow = true;
+		if (config.age === 'Castle' && currentAge === 'Castle') shouldShow = true;
+
+		if (!shouldShow) return;
+		
+		// Check civilization restrictions
+		if (!canTrainUnit(key)) return;
+		
+		// Check if required building exists
+		const hasBuilding = (nextBuildIds[config.building] - 1) - builds.filter(b => b.name === config.building).length > 0;
+		if (!hasBuilding) return;
+
+		// Create a unit object that matches the expected structure
+		const unit = {
+		  key: key,
+		  name: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize first letter
+		  age: config.age,
+		  building: config.building
+		};
+
+		const li = document.createElement('li');
+		li.className = 'flex items-center justify-between';
+
+        // Determine display name (check for upgrades)
+		let displayName = unit.name;
+		const unitConfig = UNIT_TYPES[unit.key];
+		if (unitConfig && unitConfig.upgrades) {
+		  // Find the highest researched upgrade
+		  for (let i = unitConfig.upgrades.length - 1; i >= 0; i--) {
+			if (researchedUpgrades[unitConfig.upgrades[i]]) {
+			  const upgradeNames = {
+				  'maa': 'Men-at-Arms',
+				  'longswordsman': 'Long Swordsman',
+				  'eaglewarrior': 'Eagle Warrior',
+				  'eliteskirmisher': 'Elite Skirmisher',
+				  'crossbowman': 'Crossbowman',
+				  'pikeman': 'Pikeman',
+				  'lightcavalry': 'Light Cavalry',
+				  'wargalley': unit.key === 'firegalley' ? 'Fire Ship' : 'War Galley'
+				};
+			  displayName = upgradeNames[unitConfig.upgrades[i]];
+			  break;
+			}
+		  }
+		}
+
+		// Determine icon based on upgrade status
+		let iconPath = `icons/military-icons/${unit.key}-icon.png`;
+		if (unitConfig && unitConfig.upgrades) {
+		  // Find the highest researched upgrade and use its icon
+		  for (let i = unitConfig.upgrades.length - 1; i >= 0; i--) {
+			if (researchedUpgrades[unitConfig.upgrades[i]]) {
+			  const upgradeIcons = {
+				  'maa': 'icons/military-icons/maa-icon.png',
+				  'longswordsman': 'icons/military-icons/longswordsman-icon.png',
+				  'eaglewarrior': 'icons/military-icons/eaglewarrior-icon.png',
+				  'eliteskirmisher': 'icons/military-icons/eliteskirmisher-icon.png',
+				  'crossbowman': 'icons/military-icons/crossbowman-icon.png',
+				  'pikeman': 'icons/military-icons/pikeman-icon.png',
+				  'lightcavalry': 'icons/military-icons/light-cavalry-icon.png',
+				  'wargalley': unit.key === 'firegalley' ? 'icons/military-icons/fire-ship-icon.png' : 'icons/military-icons/wargalley-icon.png'
+				};
+			  iconPath = upgradeIcons[unitConfig.upgrades[i]] || iconPath;
+			  break;
+			}
+		  }
+		}
+
+		li.innerHTML = `
+		  <div class="flex items-center">
+			<img id="${unit.key}-icon-btn" src="${iconPath}" class="h-6 w-6 mr-2" alt="${unit.name}">
+			<span id="${unit.key}-text">${displayName}</span>
+		  </div>
+          <div class="flex gap-1">
+            ${(() => {
+			  const nextUpgrade = getNextAvailableUpgrade(unit.key);
+			  if (!nextUpgrade) return '';
+			  
+			  const tech = TECH_TYPES[nextUpgrade];
+			  let canShow = false;
+			  if (tech.age === 'Feudal') canShow = currentAge !== 'Dark';
+			  if (tech.age === 'Castle') canShow = currentAge === 'Castle';
+			  
+			  return canShow ? `<button id="btn-upgrade-${nextUpgrade}" class="px-1 bg-blue-600 text-white rounded text-sm" title="Upgrade to ${tech.name}">↑</button>` : '';
+			})()}
+            <button id="btn-${unit.key}" class="px-1 bg-green-600 text-white rounded text-sm">
+              <span id="${unit.key}-symbol">+</span>
+            </button>
+          </div>
+        `;
+
+        list.appendChild(li);
+      });
+
+      // Re-bind all the click events
+      bindMilitaryUnitEvents();
+    }
+	
+	function renderCivilianUnitsList() {
+	  const list = document.getElementById('civilian-units-list');
+	  list.innerHTML = '';
+
+	  // Villager - always available
+	  const villagerLi = document.createElement('li');
+	  villagerLi.className = 'flex items-center justify-between';
+	  villagerLi.innerHTML = `
+		<button id="btn-train-civ" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
+		<div class="flex items-center">
+		  <span>Villager</span>
+		  <img src="icons/vil icons/villager-icon.png" class="h-6 w-6 mr-2" alt="Villager">
+		</div>
+	  `;
+	  list.appendChild(villagerLi);
+
+	  // Fishing Ship - only if docks exist
+	  const completedDocks = (nextBuildIds['Dock'] - 1) - builds.filter(b => b.name === 'Dock').length;
+	  if (completedDocks > 0) {
+		const fishingLi = document.createElement('li');
+		fishingLi.className = 'flex items-center justify-between';
+		fishingLi.innerHTML = `
+		  <button id="btn-fishingship" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
+		  <div class="flex items-center">
+			<span>Fishing Ship</span>
+			<img src="Icons/vil icons/fishing-ship-icon.png" class="h-6 w-6 mr-2" alt="Fishing Ship">
+		  </div>
+		`;
+		list.appendChild(fishingLi);
+
+		// Transport Ship - also only if docks exist
+		const transportLi = document.createElement('li');
+		transportLi.className = 'flex items-center justify-between';
+		transportLi.innerHTML = `
+		  <button id="btn-transportship" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
+		  <div class="flex items-center">
+			<span>Transport Ship</span>
+			<img src="icons/vil icons/transportship-icon.png" class="h-6 w-6 mr-2" alt="Transport Ship">
+		  </div>
+		`;
+		list.appendChild(transportLi);
+	  }
+
+	  // Re-bind click events
+	  const trainBtn = document.getElementById('btn-train-civ');
+	  if (trainBtn) {
+		trainBtn.onclick = handleTrain;
+	  }
+	  
+	  const fishingBtn = document.getElementById('btn-fishingship');
+	  if (fishingBtn) {
+		fishingBtn.onclick = () => {
+		  pushState();
+		  queueUnit('fishingship');
+		};
+	  }
+	  
+	  const transportBtn = document.getElementById('btn-transportship');
+	  if (transportBtn) {
+		transportBtn.onclick = () => {
+		  pushState();
+		  queueUnit('transportship');
+		};
+	  }
+	}
+
+    function bindMilitaryUnitEvents() {
+      // Bind unit training buttons
+      const unitButtons = ['militia', 'scout', 'archer', 'skirmisher', 'spearman', 'eaglescout', 'camel', 'steppelancer', 'knight', 'monk', 'mangonel', 'galley', 'firegalley', 'jianswordsman', 'cavalryarcher', 'heiguangcavalry', 'scorpion'];
+      unitButtons.forEach(unit => {
+        const btn = document.getElementById(`btn-${unit}`);
+        if (btn) {
+          btn.onclick = () => {
+            pushState();
+            queueUnit(unit);
+          };
+        }
+
+        // Bind upgrade buttons - check all possible upgrades
+		['maa', 'longswordsman', 'eaglewarrior', 'eliteskirmisher', 'crossbowman', 'pikeman', 'lightcavalry', 'wargalley'].forEach(upgradeType => {
+		  const upgradeBtn = document.getElementById(`btn-upgrade-${upgradeType}`);
+		  if (upgradeBtn) {
+			upgradeBtn.onclick = () => {
+			  pushState();
+			  queueTechWithBuilding(upgradeType);
+			};
+		  }
+		});
+      });
+    }
+
+    // SIDE-PANEL AGGREGATOR
+    function addSimple(key, desc, count = 1) {
+      if (count <= 0) return;
+      let last = simpleHistory[simpleHistory.length - 1];
+      if (last && last.key === key) {
+        last.count += count;
+      } else {
+        simpleHistory.push({ key, description: desc, count });
+      }
+    }
+
+    function renderSimpleHistory() {
+      buildOrderList.innerHTML = '';
+      simpleHistory.forEach(e => {
+        const li = document.createElement('li');
+        if (e.key.startsWith('build-')) {
+          const nm = e.description;
+          li.textContent = `Build ${e.count} ${nm}${e.count > 1 ? 's' : ''}`;
+        } else {
+          li.textContent = `${e.count} vils to ${e.description}`;
+        }
+        buildOrderList.appendChild(li);
+      });
+    }
+
+	function calculateTotalPopulation() {
+	  let total = scoutOn ? 1 : 0;
+	  total += vils.length;
+	  
+	  // Dynamically count all military units
+	  Object.keys(UNIT_TYPES).forEach(unitType => {
+		if (unitType === 'villager') return;
+		
+		const unitArray = getUnitArrayDynamic(unitType);
+		if (unitArray) {
+		  total += unitArray.length;
+		}
+	  });
+	  
+	  // Add units in training queue (excluding techs)
+	  total += trainingQueue.filter(q => q.type !== 'tech').length;
+	  
+	  return total;
+	}
+
+	function getUnitArray(unitType) {
+	  const arrays = {
+		militia: militiaActive,
+		scout: scoutActive,
+		archer: archerActive,
+		spearman: spearmanActive,
+		eaglescout: eaglescoutActive,
+		knight: knightActive,
+		monk: monkActive,
+		mangonel: mangonelActive,
+		galley: galleyActive,
+		firegalley: firegalleyActive,
+		skirmisher: skirmisherActive,
+		camel: camelActive,
+		steppelancer: steppelancerActive
+	  };
+	  return arrays[unitType];
+	}
+
+    // TRAIN
+    function handleTrain() {
+      pushState();
+      queueUnit('villager');
+    }
+
+    function queueUnit(type) {
+	  console.log('Attempting to queue unit:', type);
+		const cfg = UNIT_TYPES[type];
+		if (!cfg) {
+			alert(`Unknown unit type: ${type}`);
+			return;
+		}
+
+	  // Check age requirements dynamically
+	  if (cfg.age === 'Feudal' && currentAge === 'Dark') {
+		alert('Requires Feudal Age');
+		return;
+	  }
+	  if (cfg.age === 'Castle' && currentAge !== 'Castle') {
+		alert('Requires Castle Age');
+		return;
+	  }
+
+	  // Check building requirements dynamically
+	  if (cfg.building !== 'TownCenter') {
+		const hasBuilding = (nextBuildIds[cfg.building] - 1) - builds.filter(b => b.name === cfg.building).length > 0;
+		if (!hasBuilding) {
+		  alert(`Requires ${cfg.building}`);
+		  return;
+		}
+	  }
+
+	  // Dynamic population count
+	  const usedSlots = calculateTotalPopulation();
+	  if (usedSlots >= popCap) {
+		alert('Population cap reached');
+		return;
+	  }
+
+	  // cost check
+	  for (let r in cfg.cost) {
+		if (res[r] < cfg.cost[r]) {
+		  alert(`Not enough ${r}`);
+		  return;
+		}
+	  }
+
+	  // deduct cost
+	  for (let r in cfg.cost) {
+		res[r] -= cfg.cost[r];
+		totalSpent[r] += cfg.cost[r];
+	  }
+
+	  // Handle variable training times
+	  let actualTrainTime = cfg.trainTime;
+	  if (type === 'eaglescout' && currentAge === 'Feudal') {
+		actualTrainTime = 60;
+	  }
+
+	  const id = getNextUnitId(type);
+	  trainingQueue.push({
+		id,
+		type,
+		rem: actualTrainTime,
+		total: actualTrainTime
+	  });
+	  
+	  addLog(`Queued ${type} #${id}`);
+	  renderAll();
+	}
+
+    function queueTech(techId) {
+      const tech = TECH_TYPES[techId];
+
+      // Check building requirement
+      if (tech.building && tech.building !== 'TownCenter') {
+        const requiredBuilding = tech.building;
+        const hasBuilding = (nextBuildIds[requiredBuilding] - 1) - builds.filter(b => b.name === requiredBuilding).length > 0;
+        if (!hasBuilding) {
+          alert(`Requires ${requiredBuilding}`);
+          return;
+        }
+      }
+
+      // Check if already researched
+      if (researchedTechs[techId] || researchedUpgrades[techId]) {
+        alert('Already researched');
+        return;
+      }
+
+      if (!tech.requirement()) {
+        alert(`Requirements not met for ${tech.name}`);
+        return;
+      }
+
+      // Check cost and deduct
+      for (let r in tech.cost) {
+        if (res[r] < tech.cost[r]) {
+          alert(`Not enough ${r}`);
+          return;
+        }
+        res[r] -= tech.cost[r];
+        totalSpent[r] += tech.cost[r];
+      }
+
+      // Add to training queue with building designation
+      trainingQueue.push({
+        id: `tech-${techId}`,
+        type: 'tech',
+        techId: techId,
+        building: tech.building,
+        rem: tech.time,
+        total: tech.time
+      });
+
+      addLog(`Started ${tech.name}`);
+      renderAll();
+	}
+
+	function queueTechWithBuilding(techId) {
+	  const tech = TECH_TYPES[techId];
+	  
+	  // Check building requirement
+	  if (tech.building && tech.building !== 'TownCenter') {
+		const requiredBuilding = tech.building;
+		const hasBuilding = (nextBuildIds[requiredBuilding] - 1) - builds.filter(b => b.name === requiredBuilding).length > 0;
+		if (!hasBuilding) {
+		  alert(`Requires ${requiredBuilding}`);
+		  return;
+		}
+	  }
+	  
+	  // Check if already researched
+	  if (researchedTechs[techId] || researchedUpgrades[techId]) {
+		alert('Already researched');
+		return;
+	  }
+	  
+	  // Check cost and deduct
+	  for (let r in tech.cost) {
+		if (res[r] < tech.cost[r]) {
+		  alert(`Not enough ${r}`);
+		  return;
+		}
+		res[r] -= tech.cost[r];
+		totalSpent[r] += tech.cost[r];
+	  }
+	  
+	  // Add to training queue with building designation
+	  trainingQueue.push({
+		id: `tech-${techId}`,
+		type: 'tech',
+		techId: techId,
+		building: tech.building,
+		rem: tech.time,
+		total: tech.time
+	  });
+	  
+	  addLog(`Started ${tech.name}`);
+	  renderAll();
+	}
+
+	// DROP
+	function handleDrop() {
+	  pushState();
+	  vils.filter(v => v.selected).forEach(v => {
+		['food', 'wood', 'gold', 'stone'].forEach(k => {
+		  const amt = v.basket[k] || 0;
+		  if (amt > 0) {
+			res[k] += amt;
+			totalGathered[k] += amt;
+			v.basket[k] = 0;
+			addLog(`Vil #${v.id} drop-off ${amt} ${k}`);
+		  }
+		});
+		v.selected = false;
+	  });
+	  renderAll();
+	}
+
+	// ADVANCE TIME
+	function processTime(dt) {
+		civLocked = true;
+		console.log('processTime called with dt:', dt);
+		console.log('trainingQueue:', JSON.stringify(trainingQueue));
+	  timeSec += dt;
+		// Handle auto-train - queue next villager when current one starts training
+		if (autoTrain) {
+		  const villagersInQueue = trainingQueue.filter(q => q.type === 'villager').length;
+		  const canAfford = res.food >= 50;
+		  const hasPopSpace = (scoutOn ? 1 : 0) + vils.length + militiaActive.length + fishingShipActive.length + 
+			knightActive.length + monkActive.length + mangonelActive.length + galleyActive.length + firegalleyActive.length + 
+			trainingQueue.filter(q => q.type !== 'tech').length < popCap;
+		  
+		  // Queue a villager if we have less than 2 in queue (one training + one waiting)
+		  if (villagersInQueue < 2 && canAfford && hasPopSpace) {
+			res.food -= 50;
+			totalSpent.food += 50;
+			const id = getNextUnitId('villager');
+			trainingQueue.push({
+			  id,
+			  type: 'villager',
+			  rem: TRAIN_T,
+			  total: TRAIN_T
+			});
+			addLog(`Auto-trained villager #${id}`);
+		  }
+		}
+	  // Process TC queue in TRUE FIFO order (villagers and techs mixed)
+		const tcQueue = trainingQueue.filter(j =>
+		  j.type === 'villager' || (j.type === 'tech' && j.building === 'TownCenter')
+		);
+		console.log('TC Queue:', tcQueue);
+		let timeLeft = dt;
+		while (timeLeft > 0 && tcQueue.length > 0) {
+			console.log('Processing TC queue, timeLeft:', timeLeft);
+		  const activeJob = tcQueue.shift();
+		  const tick = Math.min(timeLeft, activeJob.rem);
+		  activeJob.rem -= tick;
+		  timeLeft -= tick;
+
+		  if (activeJob.rem <= 0) {
+			trainingQueue = trainingQueue.filter(x => x !== activeJob);
+
+			if (activeJob.type === 'villager') {
+			  vils.push({
+				id: activeJob.id,
+				task: 'idle',
+				basket: {},
+				lifetimeGathered: {},
+				hist: [{ t: timeSec, task: 'idle' }],
+				selected: false
+			  });
+			  addLog(`Vil #${activeJob.id} spawned`);
+			} else {
+			  switch (activeJob.techId) {
+				case 'feudalage':
+				  currentAge = 'Feudal';
+				  addLog('Advanced to Feudal Age');
+				  break;
+				case 'castleage':
+				  currentAge = 'Castle';
+				  addLog('Advanced to Castle Age');
+				  break;
+				case 'loom':
+				  loomResearched = true;
+				  addLog('Researched Loom');
+				  break;
+				default:
+				  const tech = TECH_TYPES[activeJob.techId];
+				  if (researchedUpgrades.hasOwnProperty(activeJob.techId)) {
+					researchedUpgrades[activeJob.techId] = true;
+				  } else {
+					researchedTechs[activeJob.techId] = true;
+				  }
+				  addLog(`Researched ${tech.name}`);
+			  }
+			}
+		  } else {
+			tcQueue.unshift(activeJob);
+			break;
+		  }
+		}
+
+	  // Process all buildings (except TC which is handled above)
+		const buildingTypes = ['Barracks', 'Stable', 'ArcheryRange', 'Dock', 'Monastery', 'SiegeWorkshop', 'Blacksmith', 'LumberCamp', 'MiningCamp', 'Mill', 'Market', 'University'];
+
+		buildingTypes.forEach(buildingType => {
+		  const availableSlots = (nextBuildIds[buildingType] - 1) - builds.filter(b => b.name === buildingType).length;
+		  if (availableSlots <= 0) return;
+
+		  // Get all jobs (units + techs) for this building, in queue order
+		  const buildingJobs = trainingQueue.filter(j => {
+			if (j.type === 'tech') return j.building === buildingType;
+			const unitConfig = UNIT_TYPES[j.type];
+			return unitConfig && unitConfig.building === buildingType;
+		  });
+		  
+		    // ADD THIS DEBUG BLOCK HERE:
+		  if (buildingType === 'Dock' && buildingJobs.length > 0) {
+			console.log(`=== DOCK PROCESSING ===`);
+			buildingJobs.forEach(j => {
+			  console.log(`Job ${j.id} type ${j.type}: isUnit=${j.type !== 'tech'}, building=${j.building || (UNIT_TYPES[j.type] && UNIT_TYPES[j.type].building)}`);
+			});
+		  }
+
+		  if (buildingJobs.length === 0) return;
+
+		  // Process up to availableSlots jobs simultaneously
+		  const activeJobs = buildingJobs.slice(0, availableSlots);
+		  let timeLeft = dt;
+
+		  while (timeLeft > 0 && activeJobs.length > 0) {
+			const nextFinish = Math.min(...activeJobs.map(j => j.rem));
+			const tick = Math.min(timeLeft, nextFinish);
+			
+			activeJobs.forEach(j => j.rem -= tick);
+			timeLeft -= tick;
+			
+			const completed = activeJobs.filter(j => j.rem <= 0);
+			completed.forEach(j => {
+			  trainingQueue = trainingQueue.filter(x => x !== j);
+			  
+			  if (j.type === 'tech') {
+				// Handle completed tech
+				const tech = TECH_TYPES[j.techId];
+				if (researchedUpgrades.hasOwnProperty(j.techId)) {
+				  researchedUpgrades[j.techId] = true;
+				} else {
+				  researchedTechs[j.techId] = true;
+				}
+				addLog(`Researched ${tech.name}`);
+			  } else {
+				if (j.type === 'fishingship') {
+				  fishingShipActive.push({
+					id: j.id,
+					task: 'idle',
+					basket: { food: 0 },
+					lifetimeGathered: { food: 0 },
+					hist: [{ t: timeSec, task: 'idle' }]
+				  });
+				} else if (j.type === 'transportship') {
+				  transportshipActive.push({
+					id: j.id,
+					task: 'idle',
+					basket: {},
+					lifetimeGathered: {},
+					hist: [{ t: timeSec, task: 'idle' }]
+				  });
+				} else {
+				  const unitArray = getUnitArrayDynamic(j.type);
+				  if (unitArray) {
+					unitArray.push(j.id);
+				  }
+				}
+				
+				const unitNames = {
+				  fishingship: 'Fishing Ship',
+				  transportship: 'Transport Ship',
+				  militia: researchedUpgrades.longswordsman ? 'Long Swordsman' : (researchedUpgrades.maa ? 'Men-at-Arms' : 'Militia'),
+				  knight: 'Knight',
+				  monk: 'Monk',
+				  mangonel: 'Mangonel',
+				  galley: researchedUpgrades.wargalley ? 'War Galley' : 'Galley',
+				  scout: researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout',
+				  archer: researchedUpgrades.crossbowman ? 'Crossbowman' : 'Archer',
+				  spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
+				  eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
+				  firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
+				  skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',  
+				  camel: 'Camel',  
+				  steppelancer: 'Steppe Lancer',
+				  jianswordsman: { food: 60, gold: 40 },
+				  cavalryarcher: { wood: 40, gold: 60 },
+				  heiguangcavalry: { food: 60, gold: 75 },
+				  scorpion: { wood: 75, gold: 75 }
+				};
+				
+				const displayName = unitNames[j.type] || j.type;
+				addLog(`${displayName} #${j.id} spawned`);
+			  }
+			});
+			
+			// Remove completed jobs from activeJobs
+			completed.forEach(completedJob => {
+			  const index = activeJobs.indexOf(completedJob);
+			  if (index > -1) activeJobs.splice(index, 1);
+			});
+		  }
+		});
+
+	  // gathering & track per-villager totals
+	  vils.forEach(v => {
+		if (v.task in FOOD_RATE) {
+		  let dur = dt;
+		  if (v.justSpawned) {
+			dur = Math.max(0, dt - 1.5);
+			v.justSpawned = false;
+		  }
+
+		  let rate = FOOD_RATE[v.task];
+		  const civ = CIVILIZATIONS[selectedCiv];
+
+		  // Apply civ bonuses
+			if (resourceType === 'sheep' && civ.bonuses.shepherdWorkRate) {
+				rate *= civ.bonuses.shepherdWorkRate;
+			}
+			if (v.task === 'berries' && civ.bonuses.foragerWorkRate) {
+				rate *= civ.bonuses.foragerWorkRate;
+			}
+			if (v.task === 'hunt' && civ.bonuses.hunterWorkRate) {
+				rate *= civ.bonuses.hunterWorkRate;
+			}
+
+		  const collected = rate * dur;
+		  v.basket.food = (v.basket.food || 0) + collected;
+		  v.lifetimeGathered.food += (collected || 0);
+		  if (v.basket.food >= CAPACITY[v.task]) {
+			res.food += CAPACITY[v.task];
+			totalGathered.food += CAPACITY[v.task];
+			v.basket.food -= CAPACITY[v.task];
+			addLog(`Vil #${v.id} dropped off ${CAPACITY[v.task]} food`);
+		  }
+		}
+
+		['wood', 'gold', 'stone'].forEach(k => {
+		  if (v.task === k) {
+			let dur = dt;
+			if (v.justSpawned) {
+			  dur = Math.max(0, dt - 1.5);
+			  v.justSpawned = false;
+			}
+			const collected = FLAT_RATE * dur;
+			v.basket[k] = (v.basket[k] || 0) + collected;
+			v.lifetimeGathered[k] += (collected || 0);
+			if (v.basket[k] >= CAPACITY[k]) {
+			  res[k] += CAPACITY[k];
+			  totalGathered[k] += CAPACITY[k];
+			  v.basket[k] -= CAPACITY[k];
+			  addLog(`Vil #${v.id} dropped off ${CAPACITY[k]} ${k}`);
+			}
+		  }
+		});
+	  });
+
+	  fishingShipActive.forEach(ship => {
+		if (ship.task && ['closedeepfish', 'fardeepfish', 'shorefish'].includes(ship.task)) {
+		  const rate = FOOD_RATE[ship.task];
+		  const collected = rate * dt;
+		  ship.basket.food = (ship.basket.food || 0) + collected;
+		  ship.lifetimeGathered.food += collected;
+
+		  const capacity = 15;
+		  if (ship.basket.food >= capacity) {
+			res.food += capacity;
+			totalGathered.food += capacity;
+			ship.basket.food -= capacity;
+			addLog(`Ship #${ship.id} dropped off ${capacity} food`);
+		  }
+		}
+	  });
+
+	  // building
+	  builds.forEach(b => {
+		const cnt = vils.filter(v => v.bldUid === b.uid).length;
+		  if (cnt) {
+			let workRate = 1 + 0.3333 * (cnt - 1); // Base work rate with multiple villagers
+			// Civ bonuses
+			if (selectedCiv === 'wu' && b.name === 'House') {
+			  workRate *= CIVILIZATIONS.wu.bonuses.houseBuildSpeed; // 2.0 = 100% faster
+			}
+			// elseif (selectedCiv === 'spanish') {
+			//   workRate *= 1.3;
+			// }
+			// elseif (selectedCiv === 'cumans' && b.name === 'TownCenter' && currentAge === 'Feudal') {
+			//   workRate *= 0.5; // Need to check how slow they build feudal TCs
+			// }
+			
+			b.rem -= dt * workRate;
+		  }
+	  });
+	  const done = builds.filter(b => b.rem <= 0);
+	  done.forEach(b => {
+		builds = builds.filter(x => x.uid !== b.uid);
+		addLog(`Finished building ${b.name}#${b.id}`);
+		if (selectedCiv === 'wu' && CIVILIZATIONS.wu.bonuses.buildingFoodBonus) {
+		  const eligibleBuildings = ['Barracks', 'ArcheryRange', 'Stable', 'SiegeWorkshop', 'Castle', 'Dock'];
+		  if (eligibleBuildings.includes(b.name)) {
+			res.food += CIVILIZATIONS.wu.bonuses.buildingFoodBonus;
+			addLog(`Wu bonus: +${CIVILIZATIONS.wu.bonuses.buildingFoodBonus} food from ${b.name}`);
+		  }
+		}
+		if (b.name === 'House') popCap = Math.min(200, popCap + 5);
+		if (b.name === 'Castle') popCap = Math.min(200, popCap + 20);
+		vils.forEach(v => {
+		  if (v.bldUid === b.uid) {
+			v.task = 'idle';
+			delete v.bldUid;
+			recordHistory(v, 'idle');
+		  }
+		});
+	  });
+	}
+
+	// RENDER ZONES
+	function renderZones() {
+	  const zones = [
+		['idle', 'Idle'],
+		['berries', 'Berries'],
+		['sheep', 'Sheep'],
+		['hunt', 'Hunt'],
+		['fish', 'Fish'],
+		['farm', 'Farm'],
+		['repair', 'Repair'],
+		['wood', 'Wood'],
+		['gold', 'Gold'],
+		['stone', 'Stone'],
+		['closedeepfish', 'Deep Fish (Close)'],
+		['fardeepfish', 'Deep Fish (Far)'],
+		['shorefish', 'Shore Fish (boats only)']
+	  ];
+	  
+	  td.innerHTML = '';
+	  zones.forEach(([id, label]) => {
+		const z = document.createElement('div');
+		z.id = 'zone-' + id;
+		z.className = 'task-zone ' + id;
+		z.textContent = label;
+		
+		// Add gather rate tooltip for resource zones
+		if (id !== 'idle' && id !== 'repair') {
+		  const gatherInfo = getGatherRate(id);
+		  let tooltipText = `${label}\nGather Rate: ${gatherInfo.rate.toFixed(1)}/min`;
+		  
+		  // Add capacity info
+		  if (CAPACITY[id]) {
+			tooltipText += `\nCapacity: ${CAPACITY[id]}`;
+		  }
+		  
+		  // Add civilization bonuses if any
+		  if (gatherInfo.bonuses.length > 0) {
+			tooltipText += '\n\nCivilization Bonuses:';
+			gatherInfo.bonuses.forEach(bonus => {
+			  tooltipText += '\n• ' + bonus;
+			});
+		  }
+		  
+		  z.title = tooltipText;
+		} else if (id === 'idle') {
+		  z.title = 'Idle - Villagers do not gather resources';
+		} else if (id === 'repair') {
+		  z.title = 'Repair - Villagers repair buildings and siege weapons';
+		}
+		
+		z.addEventListener('dragover', e => {
+		  e.preventDefault();
+		  z.classList.add('dragover');
+		});
+		z.addEventListener('dragleave', e => {
+		  z.classList.remove('dragover');
+		});
+		z.addEventListener('drop', e => {
+		  pushState();
+		  e.preventDefault();
+		  z.classList.remove('dragover');
+
+		  let ids;
+		  try {
+			ids = JSON.parse(e.dataTransfer.getData('text/plain'));
+		  } catch {
+			ids = [+e.dataTransfer.getData('text/plain')];
+		  }
+
+		  ids.forEach(i => {
+			// Handle fishing ships
+			if (typeof i === 'string' && i.startsWith('ship-')) {
+			  const shipId = parseInt(i.replace('ship-', ''));
+
+			  // Allow fishing ships to go idle
+			  if (id === 'idle') {
+				const ship = fishingShipActive.find(s => s.id === shipId);
+				if (ship) {
+				  ship.task = 'idle';
+				  const hist = ship.hist;
+				  const last = hist[hist.length - 1];
+				  if (last && last.t === timeSec) {
+					last.task = 'idle';
+				  } else {
+					hist.push({ t: timeSec, task: 'idle' });
+				  }
+				  addLog(`Ship #${shipId}→idle`);
+				}
+				return;
+			  }
+
+			  if (!['closedeepfish', 'fardeepfish', 'shorefish'].includes(id)) {
+				alert('Fishing ships can only work on deep and shore fish or be idle');
+				return;
+			  }
+
+			  const ship = fishingShipActive.find(s => s.id === shipId);
+			  if (ship) {
+				ship.task = id;
+				const hist = ship.hist;
+				const last = hist[hist.length - 1];
+				if (last && last.t === timeSec) {
+				  last.task = id;
+				} else {
+				  hist.push({ t: timeSec, task: id });
+				}
+				addLog(`Ship #${shipId}→${id}`);
+			  }
+			  return;
+			}
+
+			// Handle villagers
+			const v = vils.find(x => x.id === i);
+			if (!v) return;
+
+			if (['closedeepfish', 'fardeepfish', 'shorefish'].includes(id)) {
+			  alert('Only fishing ships can work on this resource');
+			  return;
+			}
+
+			v.task = id;
+			delete v.bldUid;
+
+			const msg = `Vil #${i}→${id}`;
+			const lastLog = logEntries[logEntries.length - 1];
+			if (!(lastLog && lastLog.time === timeSec && lastLog.msg === msg)) {
+			  addLog(msg);
+			}
+
+			recordHistory(v, id);
+		  });
+
+		  renderAll();
+		});
+
+		td.appendChild(z);
+	  });
+	}
+
+	// Render completed buildings count
+	function renderBuildingsList() {
+	  const ul = document.getElementById('building-list');
+	  ul.innerHTML = '';
+	  Object.keys(BUILD_COST).forEach(name => {
+		const queued = nextBuildIds[name] - 1;
+		const inProg = builds.filter(b => b.name === name).length;
+		const done = queued - inProg;
+		const li = document.createElement('li');
+		li.textContent = `${name}: ${done}`;
+		ul.appendChild(li);
+	  });
+	}
+	
+	function getGatherRate(resourceType) {
+	  let baseRate = FOOD_RATE[resourceType] || FLAT_RATE;
+	  const civ = CIVILIZATIONS[selectedCiv];
+	  let appliedBonuses = [];
+	  
+	  // Apply civilization bonuses and track which ones are applied
+	  if (resourceType === 'sheep' && civ.bonuses.shepherdWorkRate) {
+		baseRate *= civ.bonuses.shepherdWorkRate;
+		appliedBonuses.push(`${civ.name} shepherd bonus: ${((civ.bonuses.shepherdWorkRate - 1) * 100).toFixed(0)}% faster`);
+	  }
+	  
+	  if (resourceType === 'berries' && civ.bonuses.foragerWorkRate) {
+		baseRate *= civ.bonuses.foragerWorkRate;
+		appliedBonuses.push(`${civ.name} forager bonus: ${((civ.bonuses.foragerWorkRate - 1) * 100).toFixed(0)}% faster`);
+	  }
+	  
+	  if (resourceType === 'hunt' && civ.bonuses.hunterWorkRate) {
+		baseRate *= civ.bonuses.hunterWorkRate;
+		appliedBonuses.push(`${civ.name} hunter bonus: ${((civ.bonuses.hunterWorkRate - 1) * 100).toFixed(0)}% faster`);
+	  }
+	  
+	  // Convert rate to per-minute for display
+	  const ratePerMinute = resourceType in FOOD_RATE ? baseRate * 60 : baseRate * 60;
+	  
+	  return {
+		rate: ratePerMinute,
+		bonuses: appliedBonuses
+	  };
+	}
+
+	// RENDER ALL
+	function renderAll() {
+	  renderRes();
+	  renderVils();
+	  renderMilitaryUnits();
+	  renderEconomicUnits();
+	  renderBuildBtns();
+	  renderActive();
+	  renderLog();
+	  renderHist();
+	  renderSimpleHistory();
+	  renderBuildingsList();
+	  renderTechBtns();
+	  renderMilitaryUnitsList();
+	  renderCivilianUnitsList();
+	}
+
+	// RENDER RESOURCES & POP
+	function renderRes() {
+	  rd.innerHTML = '';
+	  [
+		['res-food', 'Food', res.food, 'food'],
+		['res-wood', 'Wood', res.wood, 'wood'],
+		['res-gold', 'Gold', res.gold, 'gold'],
+		['res-stone', 'Stone', res.stone, 'stone']
+	  ].forEach(([c, l, v, k]) => {
+		const s = document.createElement('span');
+		s.className = `resource-pill ${c}`;
+		s.textContent = `${l}: ${v.toFixed(1)}`;
+		s.title = `Banked: ${v.toFixed(1)}\nGathered: ${totalGathered[k].toFixed(1)}\nSpent: ${totalSpent[k].toFixed(1)}`;
+		rd.appendChild(s);
+	  });
+
+	  const popCount = calculateTotalPopulation();
+	  const pop = document.createElement('span');
+	  pop.className = 'font-semibold ml-2';
+	  pop.textContent = `Pop: ${popCount} / ${popCap}`;
+	  rd.appendChild(pop);
+	  rd.appendChild(scoutImg);
+
+	  const ageSpan = document.createElement('span');
+	  ageSpan.className = 'font-semibold ml-2';
+	  ageSpan.textContent = `Age: ${currentAge}`;
+	  rd.appendChild(ageSpan);
+
+	  const tm = document.createElement('span');
+	  tm.className = 'ml-auto font-semibold';
+	  tm.textContent = `Time: ${formatTime(timeSec)}`;
+	  rd.appendChild(tm);
+	}
+
+	// RENDER VILLAGERS
+	function renderVils() {
+	  vd.innerHTML = '';
+	  const icons = {
+		idle: 'icons/vil icons/villager-icon.png',
+		berries: 'icons/vil icons/villager-berries.png',
+		sheep: 'icons/vil icons/villager-sheep.png',
+		hunt: 'icons/vil icons/villager-hunt.png',
+		fish: 'icons/vil icons/villager-fish.png',
+		farm: 'icons/vil icons/villager-farm.png',
+		repair: 'icons/vil icons/villager-repair.png',
+		wood: 'icons/vil icons/villager-wood.png',
+		gold: 'icons/vil icons/villager-gold.png',
+		stone: 'icons/vil icons/villager-stone.png'
+	  };
+	  
+	  vils.forEach(v => {
+		const d = document.createElement('div');
+		d.className = 'villager';
+		d.draggable = true;
+		const img = document.createElement('img');
+		img.src = icons[v.task] || icons.idle;
+		img.style.opacity = v.task === 'idle' ? 0.5 : 1;
+		d.appendChild(img);
+		const lbl = document.createElement('span');
+		lbl.textContent = '#' + v.id;
+		d.appendChild(lbl);
+		d.title =
+		  'Basket: ' + Object.entries(v.basket).map(([k, val]) => `${k}:${val.toFixed(1)}`).join(', ') +
+		  '\nTotal: ' + Object.entries(v.lifetimeGathered).map(([k, val]) => `${k}:${val.toFixed(1)}`).join(', ');
+		d.addEventListener('click', e => {
+		  e.stopPropagation();
+		  if (!e.shiftKey) vils.forEach(x => x.selected = false);
+		  v.selected = !v.selected;
+		  renderAll();
+		});
+		d.addEventListener('dragstart', e => {
+		  const ids = v.selected ? vils.filter(x => x.selected).map(x => x.id) : [v.id];
+		  e.dataTransfer.setData('text/plain', JSON.stringify(ids));
+		});
+		if (v.selected) d.classList.add('selected');
+		vd.appendChild(d);
+	  });
+	  vd.appendChild(selRect);
+	}
+
+	// Render military units
+	function renderMilitaryUnits() {
+			const mu = document.getElementById('militia-units');
+		  mu.innerHTML = '';
+
+		  // Handle the initial scout separately
+		  if (scoutOn && scoutActive.length > 0) {
+			scoutActive.forEach(id => {
+			  const d = document.createElement('div');
+			  d.className = 'villager';
+
+			  const img = document.createElement('img');
+			  
+			  // Determine scout type based on civilization
+			  let scoutType = 'Scout';
+			  let iconPath = 'icons/military-icons/scout-icon.png';
+			  
+			  if (['maya', 'aztecs', 'inca'].includes(selectedCiv)) {
+				scoutType = researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout';
+				iconPath = researchedUpgrades.eaglewarrior ? 'icons/military-icons/eaglewarrior-icon.png' : 'icons/military-icons/eaglescout-icon.png';
+			  } else if (selectedCiv === 'gurjaras') {
+				scoutType = 'Camel Scout';
+				iconPath = 'icons/military-icons/camelscout-icon.png';
+			  } else {
+				scoutType = researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout';
+				iconPath = researchedUpgrades.lightcavalry ? 'icons/military-icons/light-cavalry-icon.png' : 'icons/military-icons/scout-icon.png';
+			  }
+
+			  img.src = iconPath;
+			  img.style.opacity = 1;
+			  img.width = 24;
+			  img.height = 24;
+
+			  const lbl = document.createElement('span');
+			  lbl.textContent = `${scoutType} #${id}`;
+
+			  d.appendChild(img);
+			  d.appendChild(lbl);
+			  mu.appendChild(d);
+			});
+		  }
+
+	  // Dynamically render all military units from all arrays
+	  Object.keys(UNIT_TYPES).forEach(unitType => {
+		// Skip civilian units
+		if (unitType === 'villager' || unitType === 'fishingship') return;
+		
+		const unitArray = getUnitArrayDynamic(unitType);
+		if (unitArray && unitArray.length > 0) {
+		  unitArray.forEach(id => {
+			const d = document.createElement('div');
+			d.className = 'villager';
+
+			const img = document.createElement('img');
+			
+			// Get the display name based on upgrades
+			let displayName = getUpgradedUnitName(unitType);
+			
+			// Map unit types to their correct icons
+			const unitIcons = {
+			  'Militia': 'icons/military-icons/militia-icon.png',
+			  'Men-at-Arms': 'icons/military-icons/maa-icon.png',
+			  'Long Swordsman': 'icons/military-icons/longswordsman-icon.png',
+			  'Scout': 'icons/military-icons/scout-icon.png',
+			  'Light Cavalry': 'icons/military-icons/light-cavalry-icon.png',
+			  'Archer': 'icons/military-icons/archer-icon.png',
+			  'Crossbowman': 'icons/military-icons/crossbowman-icon.png',
+			  'Skirmisher': 'icons/military-icons/skirmisher-icon.png',
+			  'Elite Skirmisher': 'icons/military-icons/eliteskirmisher-icon.png',
+			  'Spearman': 'icons/military-icons/spearman-icon.png',
+			  'Pikeman': 'icons/military-icons/pikeman-icon.png',
+			  'Eagle Scout': 'icons/military-icons/eaglescout-icon.png',
+			  'Eagle Warrior': 'icons/military-icons/eaglewarrior-icon.png',
+			  'Camel': 'icons/military-icons/camel-icon.png',
+			  'Steppe Lancer': 'icons/military-icons/steppie-icon.png',
+			  'Knight': 'icons/military-icons/knight-icon.png',
+			  'Monk': 'icons/military-icons/monk-icon.png',
+			  'Mangonel': 'icons/military-icons/mangonel-icon.png',
+			  'Scorpion': 'icons/military-icons/scorpion-icon.png',
+			  'Galley': 'icons/military-icons/galley-icon.png',
+			  'War Galley': 'icons/military-icons/wargalley-icon.png',
+			  'Fire Galley': 'icons/military-icons/firegalley-icon.png',
+			  'Fire Ship': 'icons/military-icons/fire-ship-icon.png',
+			  'Jian Swordsman': 'icons/military-icons/jianswordsman-icon.png',
+			  'Hei Guang Cavalry': 'icons/military-icons/hei-guang-icon.png'
+			};
+
+			img.src = unitIcons[displayName] || `icons/military-icons/${unitType}-icon.png`;
+			img.style.opacity = 1;
+			img.width = 24;
+			img.height = 24;
+
+			const lbl = document.createElement('span');
+			lbl.textContent = `${displayName} #${id}`;
+
+			d.appendChild(img);
+			d.appendChild(lbl);
+			mu.appendChild(d);
+		  });
+		}
+	  });
+	}
+
+	function renderEconomicUnits() {
+	  const mu = document.getElementById('fishing-boat');
+	  mu.innerHTML = '';
+
+	  // Render fishing ships
+	  fishingShipActive.forEach(ship => {
+		const d = document.createElement('div');
+		d.className = 'villager';
+		d.draggable = true;
+
+		const img = document.createElement('img');
+		if (ship.task === 'closedeepfish' ) {
+		  img.src = 'icons/vil icons/fishingshipclose.png';
+		} else if (ship.task === 'fardeepfish') {
+		  img.src = 'icons/vil icons/fishingshipfar.png';
+		} else if (ship.task === 'shorefish') {
+		  img.src = 'icons/vil icons/fishingshipshore.png';
+		} else {
+		  img.src = 'icons/vil icons/fishing-ship-icon.png';
+		}
+		img.style.opacity = ship.task === 'idle' ? 0.5 : 1;
+		img.width = 24;
+		img.height = 24;
+
+		const lbl = document.createElement('span');
+		lbl.textContent = 'Ship #' + ship.id;
+
+		d.addEventListener('dragstart', e => {
+		  e.dataTransfer.setData('text/plain', JSON.stringify(['ship-' + ship.id]));
+		});
+
+		d.appendChild(img);
+		d.appendChild(lbl);
+		mu.appendChild(d);
+	  });
+
+	  // Render transport ships
+	  transportshipActive.forEach(ship => {
+		const d = document.createElement('div');
+		d.className = 'villager';
+
+		const img = document.createElement('img');
+		img.src = 'icons/vil icons/transportship-icon.png';
+		img.style.opacity = 1;
+		img.width = 24;
+		img.height = 24;
+
+		const lbl = document.createElement('span');
+		lbl.textContent = 'Transport #' + ship.id;
+
+		d.appendChild(img);
+		d.appendChild(lbl);
+		mu.appendChild(d);
+	  });
+	}
+
+	// RENDER BUILD BUTTONS
+	function renderBuildBtns() {
+	  bd.innerHTML = '';
+	  Object.keys(BUILD_COST).forEach(n => {
+		const b = document.createElement('button');
+		b.textContent = n;
+
+		// Color code by age
+		const age = BUILDING_AGES[n];
+		let ageClass = '';
+		if (age === 'Dark') ageClass = 'building-dark';
+		else if (age === 'Feudal') ageClass = 'building-feudal';
+		else if (age === 'Castle') ageClass = 'building-castle';
+		else if (age === 'Imperial') ageClass = 'building-imperial';
+
+		b.className = `px-2 py-1 rounded text-sm ${ageClass}`;
+		if (!ageClass) b.className += ' bg-indigo-600 text-white';
+
+		// Check if building is available for current age
+		let canBuild = true;
+		if (age === 'Feudal' && currentAge === 'Dark') canBuild = false;
+		if (age === 'Castle' && (currentAge === 'Dark' || currentAge === 'Feudal')) canBuild = false;
+
+		if (!canBuild) {
+		  b.style.opacity = '0.5';
+		  b.style.cursor = 'not-allowed';
+		}
+
+		b.onclick = () => {
+		  if (!canBuild) {
+			alert(`Requires ${age} Age`);
+			return;
+		  }
+
+		  if (n === 'Barracks' && timeSec < 50 && !earlyBarracksAlertShown) {
+			alert("That's a very early drush. You naughty boy, you.");
+			earlyBarracksAlertShown = true;
+		  }
+
+		  pushState();
+		  const cost = BUILD_COST[n];
+
+		  for (let resource in cost) {
+			if (res[resource] < cost[resource]) {
+			  alert(`Not enough ${resource}`);
+			  return;
+			}
+		  }
+
+		  for (let resource in cost) {
+			res[resource] -= cost[resource];
+			totalSpent[resource] += cost[resource];
+		  }
+
+		  if (n === 'Castle' && selectedCiv === 'franks') {
+			const discount = cost.stone * CIVILIZATIONS.franks.bonuses.castleCostDiscount;
+			res.stone += discount;
+			totalSpent.stone -= discount;
+		  }
+		  
+		  let buildTime = BUILD_TIME[n];
+		  const id = nextBuildIds[n]++;
+		  const uid = nextBuildUid++;
+		  builds.push({
+			uid,
+			id,
+			name: n,
+			total: buildTime,
+			rem: buildTime
+		  });
+
+		  addLog(`Started ${n}#${id}`);
+		  addSimple(`build-${n.toLowerCase()}`, n.toLowerCase(), 1);
+		  renderAll();
+		};
+		bd.appendChild(b);
+	  });
+	}
+
+	function renderTechBtns() {
+	  const td = document.getElementById('technologies');
+	  td.innerHTML = '';
+
+	  // Group technologies by age
+	  const techsByAge = {
+		'Dark': ['loom', 'feudalage'],
+		'Feudal': ['castleage', 'townwatch', 'wheelbarrow', 'horsecollar', 'doublebitaxe', 'goldmining',
+					'stonemining', 'arson', 'squires', 'gambesons',
+				   'fletching', 'forging', 'scalemailarmor', 'scalebardingarmor', 'paddedarcherarmor', 
+				   'bloodlines', 'husbandry', 'gillnets', 'domestication'],
+		'Castle': ['ballistics', 'redemption', 'atonement', 'sanctity', 'fervor', 'bowsaw',
+				   'ironcasting', 'leatherarcherarmor', 'chainbardingarmor', 'chainmailarmor', 
+				   'bodkinarrow', 'handcart', 'heavyplow', 'goldshaftmining', 'stoneshaftmining',  
+				   'parthiantactics', 'thumbring', 'siegeengineers', 'townpatrol', 'chemistry', 'pastoralism'],
+		'Imperial': ['transhumance']
+	  };
+
+	  // Only show ages up to current age
+		const availableAges = [];
+		if (currentAge === 'Dark') {
+		  availableAges.push('Dark');
+		} else if (currentAge === 'Feudal') {
+		  availableAges.push('Dark', 'Feudal');
+		} else if (currentAge === 'Castle') {
+		  availableAges.push('Dark', 'Feudal', 'Castle');
+		}
+
+	  availableAges.forEach(age => {
+		// Add age separator
+		const separator = document.createElement('div');
+		separator.className = 'col-span-6 text-center font-bold text-sm py-1 border-b border-gray-300';
+		separator.textContent = `${age} Age`;
+		td.appendChild(separator);
+
+		techsByAge[age].forEach(techId => {
+		  if (!TECH_TYPES[techId]) return; // Skip if tech doesn't exist
+		  
+		  const tech = TECH_TYPES[techId];
+  
+		  // Check civilization restrictions - HIDE tech if not available
+			if (tech.civilizations && !tech.civilizations.includes(selectedCiv)) return;
+			if (tech.excludedCivilizations && tech.excludedCivilizations.includes(selectedCiv)) return;
+
+		  
+		  const alreadyResearched = (techId === 'feudalage' && currentAge !== 'Dark') ||
+			(techId === 'castleage' && (currentAge === 'Castle')) ||
+			(techId === 'loom' && loomResearched) ||
+			researchedTechs[techId] ||
+			researchedUpgrades[techId];
+
+		  // Check if tech can actually be researched
+			let canResearch = !alreadyResearched;
+
+			// Check building requirement
+			if (tech.building && tech.building !== 'TownCenter') {
+			  const hasBuilding = (nextBuildIds[tech.building] - 1) - builds.filter(b => b.name === tech.building).length > 0;
+			  canResearch = canResearch && hasBuilding;
+			}
+
+			// Check cost requirement
+			if (canResearch) {
+			  for (let resource in tech.cost) {
+				if (res[resource] < tech.cost[resource]) {
+				  canResearch = false;
+				  break;
+				}
+			  }
+			}
+
+			// Check custom requirements (like age prerequisites)
+			canResearch = canResearch && tech.requirement();
+
+		  const img = document.createElement('img');
+		  const techIcons = {
+			// Ages
+			feudalage: 'icons/tech-icons/feudalage-icon.png',
+			castleage: 'icons/tech-icons/castleage-icon.png',
+			
+			// Dark Age
+			loom: 'icons/tech-icons/loom-icon.png',
+			
+			// Feudal Age
+			wheelbarrow: 'icons/tech-icons/wheelbarrow-icon.png',
+			horsecollar: 'icons/tech-icons/horsecollar-icon.png',
+			doublebitaxe: 'icons/tech-icons/doublebit-icon.png',
+			goldmining: 'icons/tech-icons/goldmining-icon.png',
+			stonemining: 'icons/tech-icons/stonemining-icon.png',
+			fletching: 'icons/tech-icons/fletching-icon.png',
+			forging: 'icons/tech-icons/forging-icon.png',
+			scalemailarmor: 'icons/tech-icons/scalemail-icon.png',
+			scalebardingarmor: 'icons/tech-icons/scalebarding-icon.png',
+			paddedarcherarmor: 'icons/tech-icons/paddedarcher-icon.png',
+			bloodlines: 'icons/tech-icons/bloodlines-icon.png',
+			townwatch: 'icons/tech-icons/townwatch-icon.png',
+			bowsaw: 'icons/tech-icons/bowsaw-icon.png',
+			gambesons: 'icons/tech-icons/gambesons-icon.png',
+			gillnets: 'icons/tech-icons/Gillnets-icon.png',
+			domestication: 'icons/tech-icons/Domestication-icon.png',
+			husbandry: 'icons/tech-icons/Husbandry-icon.png',
+			squires: 'icons/tech-icons/squires-icon.png',
+			pastoralism: 'icons/tech-icons/Pastoralism-icon.png',
+			maa: 'icons/tech-icons/maa-icon.png',
+			
+			// Castle Age
+			ballistics: 'icons/tech-icons/ballistics-icon.png',
+			redemption: 'icons/tech-icons/redemption-icon.png',
+			atonement: 'icons/tech-icons/atonement-icon.png',
+			sanctity: 'icons/tech-icons/sanctity-icon.png',
+			fervor: 'icons/tech-icons/fervor-icon.png',
+			ironcasting: 'icons/tech-icons/ironcasting-icon.png',
+			leatherarcherarmor: 'icons/tech-icons/leatherarcher-icon.png',
+			chainbardingarmor: 'icons/tech-icons/chainbarding-icon.png',
+			chainmailarmor: 'icons/tech-icons/chainmail-icon.png',
+			bodkinarrow: 'icons/tech-icons/bodkin-icon.png',
+			crossbowman: 'icons/tech-icons/crossbowman-icon.png',
+			pikeman: 'icons/tech-icons/pikeman-icon.png',
+			lightcavalry: 'icons/tech-icons/light-cavalry-icon.png',
+			longswordsman: 'icons/tech-icons/longswordsman-icon.png',
+			handcart: 'icons/tech-icons/Handcart-icon.png',
+			heavyplow: 'icons/tech-icons/HeavyPlow-icon.png',
+			goldshaftmining: 'icons/tech-icons/GoldShaftMining-icon.png',
+			stoneshaftmining: 'icons/tech-icons/StoneShaftMining-icon.png',
+			arson: 'icons/tech-icons/arson-icon.png',
+			parthiantactics: 'icons/tech-icons/ParthianTactics-icon.png',
+			thumbring: 'icons/tech-icons/ThumbRing-icon.png',
+			siegeengineers: 'icons/tech-icons/SiegeEngineers-icon.png',
+			townpatrol: 'icons/tech-icons/TownPatrol-icon.png',
+			chemistry: 'icons/tech-icons/Chemistry-icon.png',
+			transhumance: 'icons/tech-icons/Transhumance-icon.png'
+		  };
+
+		  img.src = techIcons[techId] || 'icons/military-icons/scout-icon.png';
+		  img.className = 'h-8 w-8 cursor-pointer mx-auto my-auto';
+		  const costText = Object.entries(tech.cost).map(([resource, amount]) => `${amount} ${resource}`).join(', ');
+		  img.title = `${tech.name} (${tech.age} Age)\nCost: ${costText}\nTime: ${tech.time}s`;
+
+		  if (alreadyResearched) {
+			img.style.opacity = '1';
+			img.style.filter = 'none';
+			img.style.border = '2px solid #10b981';
+			img.style.borderRadius = '4px';
+		  } else if (canResearch) {
+			img.style.opacity = '1';
+			img.style.filter = 'none';
+			img.onclick = () => {
+			  pushState();
+			  queueTech(techId);
+			};
+		  } else {
+			// Greyed out but visible
+			img.style.opacity = '0.5';
+			img.style.filter = 'grayscale(100%)';
+		  }
+
+		  td.appendChild(img);
+		});
+	  });
+	}
+	
+	function getNextAvailableUpgrade(unitType) {
+	  const unitConfig = UNIT_TYPES[unitType];
+	  if (!unitConfig || !unitConfig.upgrades) return null;
+	  
+	  // Check each upgrade in order to find the next available one
+	  for (let upgrade of unitConfig.upgrades) {
+		if (!researchedUpgrades[upgrade]) {
+		  return upgrade; // This is the next upgrade we haven't researched yet
+		}
+	  }
+	  return null; // All upgrades have been researched
+	}
+	
+	function getUpgradedUnitName(unitType) {
+	  const upgradeMap = {
+		militia: researchedUpgrades.longswordsman ? 'Long Swordsman' : (researchedUpgrades.maa ? 'Men-at-Arms' : 'Militia'),
+		galley: researchedUpgrades.wargalley ? 'War Galley' : 'Galley',
+		firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
+		scout: researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout',
+		archer: researchedUpgrades.crossbowman ? 'Crossbowman' : 'Archer',
+		spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
+		skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',
+		eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
+		camel: 'Camel',
+		steppelancer: 'Steppe Lancer'
+	  };
+	  return upgradeMap[unitType] || unitType.charAt(0).toUpperCase() + unitType.slice(1);
+	}
+
+	// RENDER ACTIVE BUILDS
+	function renderActive() {
+	  ab.innerHTML = '';
+
+	  // Technology research progress
+	  if (isAdvancing) {
+		const tech = TECH_TYPES[isAdvancing.type];
+		const pct = Math.round((tech.time - isAdvancing.rem) / tech.time * 100);
+		const z = document.createElement('div');
+		z.className = 'build-zone';
+		z.innerHTML = `
+		  <div class="flex justify-between text-sm">
+			<span>Research ${tech.name}</span>
+			<span>${pct}% / ${isAdvancing.rem.toFixed(0)}s</span>
+		  </div>
+		  <div class="progress-bar" style="border-left: 4px solid #8b5cf6;">
+			<div class="progress-inner" style="width:${pct}%; background-color: #8b5cf6;"></div>
+		  </div>`;
+		ab.appendChild(z);
+	  }
+
+	  // Tech queue progress - show ALL techs with proper active status
+		const techQueue = trainingQueue.filter(j => j.type === 'tech');
+		techQueue.forEach(techJob => {
+		  let pct = 0;
+		  let isActive = false;
+		  
+		  if (techJob.building === 'TownCenter') {
+			// For TC techs, check if it's first in the TC queue
+			const tcQueue = trainingQueue.filter(j => 
+			  j.type === 'villager' || (j.type === 'tech' && j.building === 'TownCenter')
+			);
+			if (tcQueue[0] === techJob) {
+			  isActive = true;
+			  pct = Math.round((techJob.total - techJob.rem) / techJob.total * 100);
+			}
+		  } else {
+			// For other buildings, check if any building of that type is available
+			const totalBuildings = (nextBuildIds[techJob.building] - 1) - builds.filter(b => b.name === techJob.building).length;
+			if (totalBuildings > 0) {
+			  isActive = true;
+			  pct = Math.round((techJob.total - techJob.rem) / techJob.total * 100);
+			}
+		  }
+		  
+		  const tech = TECH_TYPES[techJob.techId];
+		  const z = document.createElement('div');
+		  z.className = 'build-zone';
+		  z.innerHTML = `
+			<div class="flex justify-between text-sm">
+			  <span>Research ${tech.name}</span>
+			  <span>${pct}% / ${techJob.rem.toFixed(0)}s ${isActive ? '' : '(Queued)'}</span>
+			</div>
+			<div class="progress-bar" style="border-left: 4px solid #8b5cf6;">
+			  <div class="progress-inner" style="width:${pct}%; background-color: #8b5cf6;"></div>
+			</div>`;
+		  ab.appendChild(z);
+		});
+
+	  // Training progress for all unit types
+	  Object.keys(UNIT_TYPES).forEach(unitType => {
+		const queue = trainingQueue.filter(j => j.type === unitType);
+		if (queue.length === 0) return;
+
+		const cfg = UNIT_TYPES[unitType];
+		const slots = typeof cfg.parallelSlots === 'function' ? cfg.parallelSlots() : cfg.parallelSlots;
+
+		queue.forEach((job, i) => {
+		  let pct = 0;
+		  if (i < slots) {
+			pct = Math.round((cfg.trainTime - job.rem) / cfg.trainTime * 100);
+		  }
+		  const z = document.createElement('div');
+		  z.className = 'build-zone';
+		  const isMilitary = ['militia', 'scout', 'archer', 'skirmisher', 'spearman', 'eaglescout', 'camel', 'steppelancer', 'knight', 'monk', 'mangonel', 'galley', 'firegalley', 'jianswordsman', 'cavalryarcher', 'heiguangcavalry', 'scorpion'].includes(unitType);
+		  const isEconomic = ['villager', 'fishingship', 'transportship'].includes(unitType);
+		  const ribbonColor = isMilitary ? '#ef4444' : isEconomic ? '#10b981' : '#3b82f6';
+		  const barColor = isMilitary ? '#ef4444' : isEconomic ? '#10b981' : '#3b82f6';
+
+		  const getUnitIconPath = (unitType) => {
+			  const economicUnits = ['villager', 'fishingship', 'transportship'];
+				if (economicUnits.includes(unitType)) {
+				  if (unitType === 'villager') {
+					return 'Icons/vil icons/villager-icon.png';
+				  } else if (unitType === 'fishingship') {
+					return 'Icons/vil icons/fishing-ship-icon.png';
+				  } else if (unitType === 'transportship') {
+					return 'icons/vil icons/transportship-icon.png';
+				  }
+				}
+			  
+			  // Handle upgraded unit icons
+			  const upgradedUnitName = getUpgradedUnitName(unitType);
+			  const iconMap = {
+				'Men-at-Arms': 'icons/military-icons/maa-icon.png',
+				'Long Swordsman': 'icons/military-icons/longswordsman-icon.png',
+				'Light Cavalry': 'icons/military-icons/light-cavalry-icon.png',
+				'Crossbowman': 'icons/military-icons/crossbowman-icon.png',
+				'Elite Skirmisher': 'icons/military-icons/eliteskirmisher-icon.png',
+				'Pikeman': 'icons/military-icons/pikeman-icon.png',
+				'Eagle Warrior': 'icons/military-icons/eaglewarrior-icon.png',
+				'War Galley': 'icons/military-icons/wargalley-icon.png',
+				'Fire Ship': 'icons/military-icons/fire-ship-icon.png'
+			  };
+			  
+			  return iconMap[upgradedUnitName] || `icons/military-icons/${unitType}-icon.png`;
+			};
+
+		  z.innerHTML = `
+			<div class="flex justify-between text-sm">
+			  <div class="flex items-center">
+				<img src="${getUnitIconPath(unitType)}" class="h-5 w-5 mr-2" alt="${unitType}">
+				<span>${getUpgradedUnitName(unitType)} #${job.id}</span>
+			  </div>
+			  <span>${pct}% / ${job.rem.toFixed(0)}s</span>
+			</div>
+			<div class="progress-bar" style="border-left: 4px solid ${ribbonColor};">
+			  <div class="progress-inner" style="width:${pct}%; background-color: ${barColor};"></div>
+			</div>`;
+		  ab.appendChild(z);
+		});
+	  });
+
+	  // Building progress
+	  builds.forEach(b => {
+		const z = document.createElement('div');
+		z.className = 'build-zone';
+
+		z.addEventListener('dragover', e => {
+		  e.preventDefault();
+		  z.classList.add('dragover');
+		});
+		z.addEventListener('dragleave', e => {
+		  z.classList.remove('dragover');
+		});
+
+		z.addEventListener('drop', e => {
+		  pushState();
+		  e.preventDefault();
+		  z.classList.remove('dragover');
+		  let ids;
+		  try {
+			ids = JSON.parse(e.dataTransfer.getData('text/plain'));
+		  } catch {
+			ids = [+e.dataTransfer.getData('text/plain')];
+		  }
+
+		  ids.forEach(i => {
+			const v = vils.find(x => x.id === i);
+			if (!v) return;
+
+			const taskStr = `building ${b.name}#${b.id}`;
+			v.task = 'building';
+			v.bldUid = b.uid;
+			recordHistory(v, taskStr);
+
+			const msg = `Vil #${i}→Build ${b.name}#${b.id}`;
+			const lastLog = logEntries[logEntries.length - 1];
+			if (!(lastLog && lastLog.time === timeSec && lastLog.msg === msg)) {
+			  addLog(msg);
+			}
+		  });
+
+		  renderAll();
+		});
+
+		const pct2 = Math.round((b.total - b.rem) / b.total * 100);
+		const workers = vils
+		  .filter(v => v.bldUid === b.uid)
+		  .map(v => '#' + v.id).join(', ') || 'No workers';
+
+		z.innerHTML += `
+		  <div class="flex justify-between text-sm">
+			<span>${b.name}#${b.id}</span>
+			<span>${pct2}% / ${b.rem.toFixed(0)}s</span>
+		  </div>
+		  <div class="workers">${workers}</div>
+		  <div class="progress-bar" style="border-left: 4px solid #f59e0b;">
+			<div class="progress-inner" style="width:${pct2}%; background-color: #f59e0b;"></div>
+		  </div>
+		`;
+
+		ab.appendChild(z);
+	  });
+	}
+
+	// RENDER LOG
+	function renderLog() {
+	  lb.innerHTML = '';
+	  let lastTime;
+	  logEntries.forEach((e, i) => {
+		  const tr = document.createElement('tr');
+		  const td0 = document.createElement('td');
+		  td0.textContent = e.time === lastTime ? '' : formatTime(e.time);
+		  lastTime = e.time;
+		  tr.appendChild(td0);
+
+		['msg', 'food', 'wood', 'gold', 'stone', 'vills', 'popCap'].forEach(k => {
+		  const td = document.createElement('td');
+		  td.textContent = k === 'popCap'
+			? `${e.popCount || e.vills}${e.queued ? '+' : ''}/${e.popCap}`
+			: e[k];
+		  tr.appendChild(td);
+		});
+
+		const tdDel = document.createElement('td');
+		const btn = document.createElement('button');
+		btn.textContent = 'Del';
+		btn.className = 'delete-btn';
+		btn.onclick = () => {
+		  pushState();
+		  const entry = logEntries[i];
+		  
+		  // Handle tech research deletions
+		  const techMatch = entry.msg.match(/^Started (.+)/);
+		  if (techMatch) {
+			const techName = techMatch[1];
+			// Find the tech in TECH_TYPES by name and remove from queue
+			const techId = Object.keys(TECH_TYPES).find(id => TECH_TYPES[id].name === techName);
+			if (techId) {
+			  const tech = TECH_TYPES[techId];
+			  // Refund resources
+			  Object.entries(tech.cost).forEach(([resource, amount]) => {
+				res[resource] += amount;
+			  });
+			  // Remove from training queue
+			  trainingQueue = trainingQueue.filter(q => !(q.type === 'tech' && q.techId === techId));
+			}
+			logEntries.splice(i, 1);
+			renderAll();
+			return;
+		  }
+		  
+		  const m = entry.msg.match(/^Queued (villager|militia|fishingship|knight|monk|mangonel|galley|scout|archer|spearman|eaglescout) #(\d+)/);
+		  if (m) {
+			const [, type, idStr] = m;
+			const id = parseInt(idStr, 10);
+
+			const cost = costMap[type];
+			if (cost) {
+			  res.food += cost.food || 0;
+			  res.wood += cost.wood || 0;
+			  res.gold += cost.gold || 0;
+			}
+
+			trainingQueue = trainingQueue.filter(q => !(q.type === type && q.id === id));
+		  }
+
+		  logEntries.splice(i, 1);
+		  renderAll();
+		};
+
+		tdDel.appendChild(btn);
+		tr.appendChild(tdDel);
+		lb.appendChild(tr);
+	  });
+	  	const logContainer = document.getElementById('log-container');
+		logContainer.scrollTop = logContainer.scrollHeight;
+	}
+
+	// RENDER HISTORY
+	function renderHist() {
+	  hd.innerHTML = '';
+
+	  vils.forEach(v => {
+		const c = document.createElement('div');
+		c.className = 'history-card';
+		const h3 = document.createElement('h3');
+		h3.textContent = 'Vil #' + v.id;
+		c.appendChild(h3);
+		v.hist.forEach(h => {
+		  const p = document.createElement('p');
+		  p.textContent = `${formatTime(h.t)} → ${h.task}`;
+		  c.appendChild(p);
+		});
+		hd.appendChild(c);
+	  });
+
+	  fishingShipActive.forEach(ship => {
+		const c = document.createElement('div');
+		c.className = 'history-card';
+		const h3 = document.createElement('h3');
+		h3.textContent = 'Ship #' + ship.id;
+		c.appendChild(h3);
+		if (ship.hist) {
+		  ship.hist.forEach(h => {
+			const p = document.createElement('p');
+			p.textContent = `${formatTime(h.t)} → ${h.task}`;
+			c.appendChild(p);
+		  });
+		}
+		hd.appendChild(c);
+	  });
+	}
+
+	// LOG helper
+	function addLog(msg) {
+	  const popCount = calculateTotalPopulation();
+
+	  logEntries.push({
+		time: timeSec,
+		msg,
+		food: res.food.toFixed(1),
+		wood: res.wood.toFixed(1),
+		gold: res.gold.toFixed(1),
+		stone: res.stone.toFixed(1),
+		vills: vils.length,
+		popCount: popCount, // Add this new field
+		queued: !!trainBuild,
+		popCap
+	  });
+	}
+
+	function formatTime(seconds) {
+	  if (seconds >= 60) {
+		const mins = Math.floor(seconds / 60);
+		const secs = seconds % 60;
+		return secs > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${mins}:00`;
+	  }
+	  return `0:${seconds.toString().padStart(2, '0')}`;
+	}
+
+	// BINDINGS
+	document.getElementById('btn-train').onclick = handleTrain;
+	document.getElementById('btn-cycle').onclick = () => {
+	  pushState();
+	  processTime(CYCLE);
+	  renderAll();
+	};
+	document.getElementById('btn-reset').onclick = init;
+	document.getElementById('btn-drop').onclick = handleDrop;
+	document.getElementById('btn-undo').onclick = handleUndo;
+	document.getElementById('btn-ninjalui').onclick = () => {
+	  pushState();
+	  res.food += 10000;
+	  res.wood += 10000;
+	  res.gold += 10000;
+	  res.stone += 10000;
+	  popCap = 200;
+	  addLog('Ninjalui: +10000 all resources, pop cap set to 200');
+	  renderAll();
+	};
+	// Initialize theme based on system preference
+	function initializeTheme() {
+	  const body = document.body;
+	  const button = document.getElementById('btn-theme-toggle');
+	  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+	  
+	  if (prefersDark) {
+		body.classList.add('dark-mode');
+		button.textContent = '☀️ Light';
+		button.className = 'px-3 py-1 bg-yellow-500 text-gray-900 rounded text-sm';
+	  } else {
+		body.classList.remove('dark-mode');
+		button.textContent = '🌙 Dark';
+		button.className = 'px-3 py-1 bg-gray-800 text-white rounded text-sm';
+	  }
+	}
+
+	document.getElementById('btn-theme-toggle').onclick = () => {
+	  const body = document.body;
+	  const button = document.getElementById('btn-theme-toggle');
+	  
+	  if (body.classList.contains('dark-mode')) {
+		body.classList.remove('dark-mode');
+		button.textContent = '🌙 Dark';
+		button.className = 'px-3 py-1 bg-gray-800 text-white rounded text-sm';
+	  } else {
+		body.classList.add('dark-mode');
+		button.textContent = '☀️ Light';
+		button.className = 'px-3 py-1 bg-yellow-500 text-gray-900 rounded text-sm';
+	  }
+	};
+
+	document.getElementById('btn-cycle-25').onclick = () => {
+	  pushState();
+	  processTime(25);
+	  renderAll();
+	};
+	chk.onchange = () => {
+	  autoTrain = chk.checked;
+	};
+	document.querySelectorAll('input[name="civ"]').forEach(radio => {
+	  radio.addEventListener('change', (e) => {
+		if (civLocked) {
+		  alert('Cannot change civilization after time has been processed. Please reset first.');
+		  // Revert to current selection
+		  document.querySelector(`input[value="${selectedCiv}"]`).checked = true;
+		  return;
+		}
+		if (e.target.checked) {
+		  selectedCiv = e.target.value;
+		  init();
+		}
+	  });
+	});
+	// START
+	initializeTheme();
+	init();
+	</script>
+  </body>
+</html>
