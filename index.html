@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>AoE2 Build Tool - Castle Age Update</title>
+  <title>Legion's AoE2 Build Tool</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    /* Layout */
     body { 
 	  display: flex; 
 	  flex-direction: column;
@@ -309,8 +308,7 @@
       font-size: 0.75rem; 
       font-weight: bold;
     }
-
-    /* Building age color coding */
+    
     .building-dark { 
       background-color: #1f2937 !important; 
       color: white !important; 
@@ -448,7 +446,7 @@
   <div class="main-content">
 	  <!-- LEFT PANEL -->
 	  <div class="w-64 border-r border-gray-300 bg-gray-50 p-4 flex flex-col gap-4" style="height: calc(100vh - 60px); overflow-y: auto;">
-		<!-- Civilizations -->
+		<!-- Civs -->
 		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
 		  <h2 class="font-bold mb-2">Civilizations</h2>
 		  <div class="space-y-1">
@@ -477,7 +475,7 @@
 		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
 		  <h2 class="font-bold mb-2">Military units</h2>
 		  <ul id="military-units-list" class="space-y-1">
-			<!-- Units will be dynamically added here -->
+			<!-- Units -->
 		  </ul>
 		</div>
 		
@@ -558,7 +556,7 @@
 					<th style="width: 10%;">Wood</th>
 					<th style="width: 10%;">Gold</th>
 					<th style="width: 10%;">Stone</th>
-					<th style="width: 8%;">Vills</th>
+					<th style="width: 8%;">Vils</th>
 					<th style="width: 8%;">Pop</th>
 					<th style="width: 4%; "></th>
 				</tr>
@@ -604,7 +602,6 @@
   </div>
 
   <script>
-    // CONFIG
     const CYCLE = 5;
     const TRAIN_T = 25;
     
@@ -793,7 +790,7 @@
     let nextMonkId = 1;
     let nextMangonelId = 1;
     let nextGalleyId = 1;
-	let nextFiregalleyId = 1;
+    let nextFiregalleyId = 1;
 	let nextSkirmisherId = 1;
 	let nextCamelId = 1;
 	let nextSteppeLancerId = 1;
@@ -801,7 +798,7 @@
 	let nextCavalryarcherId = 1;
 	let nextHeiguangcavalryId = 1;
 	let nextScorpionId = 1;
-    let selectedCiv = 'generic';
+        let selectedCiv = 'generic';
 	let earlyBarracksAlertShown = false;
 
     // Dynamic ID counter system
@@ -819,7 +816,7 @@
         unitIdCounters[key] = 1;
       });
       // Special cases
-      unitIdCounters.villager = 4; // Start at 4 since we begin with 3 villagers
+      unitIdCounters.villager = 4; // Start at 4 since we begin with 3 vils
     }
 	
 	// Dynamic unit array registry
@@ -1974,7 +1971,7 @@
 		  // Find the highest researched upgrade and use its icon
 		  for (let i = unitConfig.upgrades.length - 1; i >= 0; i--) {
 			if (researchedUpgrades[unitConfig.upgrades[i]]) {
-			  const upgradeIcons = {
+			  const upgradeicons = {
 				  'maa': 'icons/military-icons/maa-icon.png',
 				  'longswordsman': 'icons/military-icons/longswordsman-icon.png',
 				  'eaglewarrior': 'icons/military-icons/eaglewarrior-icon.png',
@@ -1984,7 +1981,7 @@
 				  'lightcavalry': 'icons/military-icons/light-cavalry-icon.png',
 				  'wargalley': unit.key === 'firegalley' ? 'icons/military-icons/fire-ship-icon.png' : 'icons/military-icons/wargalley-icon.png'
 				};
-			  iconPath = upgradeIcons[unitConfig.upgrades[i]] || iconPath;
+			  iconPath = upgradeicons[unitConfig.upgrades[i]] || iconPath;
 			  break;
 			}
 		  }
@@ -2045,7 +2042,7 @@
 		  <button id="btn-fishingship" class="px-1 bg-green-600 text-white rounded text-sm">+</button>
 		  <div class="flex items-center">
 			<span>Fishing Ship</span>
-			<img src="Icons/vil icons/fishing-ship-icon.png" class="h-6 w-6 mr-2" alt="Fishing Ship">
+			<img src="icons/vil icons/fishing-ship-icon.png" class="h-6 w-6 mr-2" alt="Fishing Ship">
 		  </div>
 		`;
 		list.appendChild(fishingLi);
@@ -2999,7 +2996,7 @@
 			let displayName = getUpgradedUnitName(unitType);
 			
 			// Map unit types to their correct icons
-			const unitIcons = {
+			const uniticons = {
 			  'Militia': 'icons/military-icons/militia-icon.png',
 			  'Men-at-Arms': 'icons/military-icons/maa-icon.png',
 			  'Long Swordsman': 'icons/military-icons/longswordsman-icon.png',
@@ -3027,7 +3024,7 @@
 			  'Hei Guang Cavalry': 'icons/military-icons/hei-guang-icon.png'
 			};
 
-			img.src = unitIcons[displayName] || `icons/military-icons/${unitType}-icon.png`;
+			img.src = uniticons[displayName] || `icons/military-icons/${unitType}-icon.png`;
 			img.style.opacity = 1;
 			img.width = 24;
 			img.height = 24;
@@ -3252,7 +3249,7 @@
 			canResearch = canResearch && tech.requirement();
 
 		  const img = document.createElement('img');
-		  const techIcons = {
+		  const techicons = {
 			// Ages
 			feudalage: 'icons/tech-icons/feudalage-icon.png',
 			castleage: 'icons/tech-icons/castleage-icon.png',
@@ -3310,7 +3307,7 @@
 			transhumance: 'icons/tech-icons/Transhumance-icon.png'
 		  };
 
-		  img.src = techIcons[techId] || 'icons/military-icons/scout-icon.png';
+		  img.src = techicons[techId] || 'icons/military-icons/scout-icon.png';
 		  img.className = 'h-8 w-8 cursor-pointer mx-auto my-auto';
 		  const costText = Object.entries(tech.cost).map(([resource, amount]) => `${amount} ${resource}`).join(', ');
 		  img.title = `${tech.name} (${tech.age} Age)\nCost: ${costText}\nTime: ${tech.time}s`;
@@ -3446,13 +3443,13 @@
 		  const ribbonColor = isMilitary ? '#ef4444' : isEconomic ? '#10b981' : '#3b82f6';
 		  const barColor = isMilitary ? '#ef4444' : isEconomic ? '#10b981' : '#3b82f6';
 
-		  const getUnitIconPath = (unitType) => {
+		  const getUniticonPath = (unitType) => {
 			  const economicUnits = ['villager', 'fishingship', 'transportship'];
 				if (economicUnits.includes(unitType)) {
 				  if (unitType === 'villager') {
-					return 'Icons/vil icons/villager-icon.png';
+					return 'icons/vil icons/villager-icon.png';
 				  } else if (unitType === 'fishingship') {
-					return 'Icons/vil icons/fishing-ship-icon.png';
+					return 'icons/vil icons/fishing-ship-icon.png';
 				  } else if (unitType === 'transportship') {
 					return 'icons/vil icons/transportship-icon.png';
 				  }
@@ -3478,7 +3475,7 @@
 		  z.innerHTML = `
 			<div class="flex justify-between text-sm">
 			  <div class="flex items-center">
-				<img src="${getUnitIconPath(unitType)}" class="h-5 w-5 mr-2" alt="${unitType}">
+				<img src="${getUniticonPath(unitType)}" class="h-5 w-5 mr-2" alt="${unitType}">
 				<span>${getUpgradedUnitName(unitType)} #${job.id}</span>
 			  </div>
 			  <span>${pct}% / ${job.rem.toFixed(0)}s</span>
