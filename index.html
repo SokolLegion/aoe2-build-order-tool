@@ -598,7 +598,7 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    Developed by <strong>Sokół </strong> &nbsp;- ©2025 - v0.36
+    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.37 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
   </div>
 
   <script>
@@ -2557,7 +2557,7 @@
 		  const civ = CIVILIZATIONS[selectedCiv];
 
 		  // Apply civ bonuses
-			if (resourceType === 'sheep' && civ.bonuses.shepherdWorkRate) {
+			if (v.task === 'sheep' && civ.bonuses.shepherdWorkRate) {
 				rate *= civ.bonuses.shepherdWorkRate;
 			}
 			if (v.task === 'berries' && civ.bonuses.foragerWorkRate) {
