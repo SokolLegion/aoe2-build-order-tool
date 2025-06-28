@@ -336,6 +336,35 @@
 	  width: 100vw;
 	  overflow-x: hidden;
 	}
+	
+	body.dark-mode #villagers {
+	  background-color: #374151 !important;
+	  color: #f9fafb !important;
+	}
+	
+	body.dark-mode .bg-white {
+	  background-color: #374151 !important;
+	  color: #f9fafb !important;
+	}
+
+	body.dark-mode .text-gray-600 {
+	  color: #d1d5db !important;
+	}
+
+	body.dark-mode .bg-gray-300 {
+	  background-color: #6b7280 !important;
+	  color: #f9fafb !important;
+	}
+
+	body.dark-mode .task-zone.lurebighunt {  
+	  background: #fca5a5;  
+	  color: #1f2937;  
+	}
+	
+	body.dark-mode .task-zone.bighunt {  
+	  background: #fca5a5;  
+	  color: #1f2937;  
+	}
 
 	.main-content {
 	  display: flex;
@@ -457,6 +486,9 @@
 			  <input type="radio" name="civ" value="britons"> Britons
 			</label>
 			<label class="block">
+			  <input type="radio" name="civ" value="bulgarians"> Bulgarians
+			</label>
+			<label class="block">
 			  <input type="radio" name="civ" value="franks"> Franks
 			</label>
 			<label class="block">
@@ -483,6 +515,7 @@
 		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
 		  <h2 class="font-bold mb-2">Build Order</h2>
 		  <ul id="build-order-list" class="list-disc pl-5"></ul>
+		  </ul>
 		</div>
 	  </div>
 
@@ -584,11 +617,21 @@
 			<!-- Discord Banner/Link -->
 			</div>
 		
-		<!-- Buildings -->
+		<!-- Automated Build Orders -->
 		<div class="bg-white p-2 rounded shadow overflow-auto flex-1">
-		  <h2 class="font-bold mb-2">Buildings</h2>
-		  <ul id="building-list" class="list-disc pl-5 space-y-1">
-		  </ul>
+		  <h2 class="font-bold mb-2">Quick Start</h2>
+		  <button id="btn-auto-build-order" class="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 mb-2" data-build-order="standard">
+			Execute 6+2
+			<div class="text-xs mt-1 opacity-75">
+			  6 to sheep, 2 to wood (2:05)
+			</div>
+		  </button>
+		  <button id="btn-advanced-build-order" class="w-full px-3 py-2 bg-purple-600 text-white rounded text-sm hover:bg-purple-700" data-build-order="advanced">
+			Execute 6+3
+			<div class="text-xs mt-1 opacity-75">
+			  6 to sheep, 3 to wood (2:45)
+			</div>
+		  </button>
 		</div>
 		<div class="bg-white p-2 rounded shadow cursor-pointer hover:bg-blue-50 hover:shadow-xl transform hover:scale-105 hover:transition-all hover:duration-200" onclick="window.open('https://discord.gg/AwZbXAAHG7', '_blank')">
 		  <img src="lelegion.png" alt="Join our Discord" class="w-full h-auto rounded">
@@ -598,7 +641,7 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.37 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
+    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.2.0 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
   </div>
 
   <script>
@@ -607,22 +650,52 @@
     
     const FOOD_RATE = {
       berries: 18.6 / 60,
-      sheep: 19.8 / 60,
+      sheep: 0.33,
+	  cow: 19.8 / 60,
+	  chicken: 19.8 / 60,
       hunt: 24.6 / 60,
+	  bighunt: 24.6 / 60,
       fish: 25.8 / 60,
       farm: 20.4 / 60,
       shorefish: 22.8 / 60,
       closedeepfish: 0.49 * 0.95,
       fardeepfish: 0.49 * (0.82 + Math.random() * 0.04)
     };
+	
+	const RESOURCE_RATES = {
+	  wood: 0.39,   // Lumberjack rate from official data
+	  gold: 0.38,   // Gold Miner rate from official data  
+	  stone: 0.36   // Stone Miner rate from official data
+	};
+	
+	const DECAY_RATES = {
+	  sheep: 0.24,
+	  hunt: 0.4,
+	  boar: 0.4,
+	  rhino: 0.4,
+	  deer: 0.25,
+	  chicken: 0.125,
+	  cow: 0.25
+	};
+
+	const ANIMAL_FOOD_AMOUNTS = {
+	  sheep: 100,
+	  cow: 150,
+	  chicken: 65,
+	  wildchicken: 65,
+	  boar: 340,
+	  rhino: 400,
+	  deer: 140,
+	};
     
-    const FLAT_RATE = 8 / 25;
+    const FLAT_RATE = RESOURCE_RATES.wood;
     
     const CAPACITY = {
       idle: 0,
       berries: 10,
       sheep: 10,
       hunt: 35,
+	  bighunt: 35,
       fish: 10,
       farm: 10,
       wood: 10,
@@ -632,6 +705,47 @@
       fardeepfish: 15,
       shorefish: 15
     };
+	
+	const FINITE_RESOURCES = {
+	  sheep: {
+		enabled: false,
+		defaultCount: 8,
+		foodPerUnit: 100,
+		decayRate: 0
+	  },
+	  hunt: {
+		enabled: false,
+		units: {
+		  boar: { count: 2, food: 340 },
+		  deer: { count: 4, food: 140 },
+		  rhino: { count: 0, food: 350 },
+		  elephant: { count: 0, food: 270 }
+		}
+	  },
+	  berries: {
+		enabled: false,
+		defaultBushes: 6,
+		foodPerBush: 125
+	  }
+	};
+	
+	const TASK_DELAYS = {
+	  wood: 4,
+	  gold: 3,
+	  stone: 3,
+	  sheep: 0,
+	  berries: 2,
+	  hunt: 0,
+	  lurebighunt: 32,
+	  fish: 2,
+	  farm: 5,
+	  closedeepfish: 2,
+	  fardeepfish: 5,
+	  shorefish: 0,
+	  dropoff: 0,
+	  idle: 0,
+	  repair: 3
+	};
 
     const BUILD_COST = {
       // Dark Age
@@ -701,15 +815,21 @@
     let timeSec, res, vils, builds, logEntries, trainBuild, autoTrain;
     let nextBuildIds = {};
     let totalGathered, totalSpent, popCap;
+	let finiteResources
     let simpleHistory = [];
     let scoutOn = true;
     let currentAge = 'Dark';
     let isAdvancing = false;
     let fishingShipActive = [];
 	let transportshipActive = [];
+	let sheepPools = [];
+	let garrisonedVillagers = [];
+	let boarCombatActive = [];
     let nextFishingShipId = 1;
 	let nextTransportshipId = 1;
+	let nextSheepId = 1;
     let civLocked = false;
+	initializeFiniteResources();
     let researchedTechs = {
       // Dark Age
       loom: false,
@@ -798,7 +918,8 @@
 	let nextCavalryarcherId = 1;
 	let nextHeiguangcavalryId = 1;
 	let nextScorpionId = 1;
-        let selectedCiv = 'generic';
+    let selectedCiv = 'generic';
+	let boarLuringAlertShown = false;
 	let earlyBarracksAlertShown = false;
 
     // Dynamic ID counter system
@@ -827,6 +948,7 @@
 	function getUnitArrayDynamic(unitType) {
 	  return unitArrayRegistry[unitType] || null;
 	}
+	
 	// Register all existing arrays
 	registerUnitArray('militia', militiaActive);
 	registerUnitArray('knight', knightActive);
@@ -857,6 +979,16 @@
           archeryRangeWorkRate: 1.1
         }
       },
+		bulgarians: {
+		  name: 'Bulgarians',
+		  bonuses: {
+			freeMilitiaUpgrades: true,
+			townCenterStoneDiscount: 0.5,
+			blacksmithFoodDiscount: 0.5,
+			siegeWorkshopFoodDiscount: 0.5,
+			blacksmithTeamBonus: 1.8
+		  }
+		},
       franks: {
         name: 'Franks',
         bonuses: {
@@ -1746,6 +1878,7 @@
       civLocked = false;
 	  loomResearched = false;
 	  earlyBarracksAlertShown = false;
+	  boarLuringAlertShown = false;
       Object.keys(researchedTechs).forEach(key => researchedTechs[key] = false);
       Object.keys(researchedUpgrades).forEach(key => researchedUpgrades[key] = false);
       tcCount = 1;
@@ -1790,30 +1923,33 @@
       isAdvancing = false;
 
       vils = [
-        {
-          id: 1,
-          task: 'idle',
-          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
-          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
-          hist: [{ t: 0, task: 'idle' }],
-          selected: false
-        },
-        {
-          id: 2,
-          task: 'idle',
-          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
-          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
-          hist: [{ t: 0, task: 'idle' }],
-          selected: false
-        },
-        {
-          id: 3,
-          task: 'idle',
-          basket: { food: 0, wood: 0, gold: 0, stone: 0 },
-          lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
-          hist: [{ t: 0, task: 'idle' }],
-          selected: false
-        }
+		  {
+			id: 1,
+			task: 'idle',
+			taskStartTime: 0, // ADD THIS LINE
+			basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+			lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+			hist: [{ t: 0, task: 'idle' }],
+			selected: false
+		  },
+		  {
+			id: 2,
+			task: 'idle',
+			taskStartTime: 0, // ADD THIS LINE
+			basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+			lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+			hist: [{ t: 0, task: 'idle' }],
+			selected: false
+		  },
+		  {
+			id: 3,
+			task: 'idle',
+			taskStartTime: 0, // ADD THIS LINE
+			basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+			lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+			hist: [{ t: 0, task: 'idle' }],
+			selected: false
+		  }
       ];
       // For Maya civilization
       if (selectedCiv === 'maya') {
@@ -2355,248 +2491,419 @@
 
 	// ADVANCE TIME
 	function processTime(dt) {
-		civLocked = true;
-		console.log('processTime called with dt:', dt);
-		console.log('trainingQueue:', JSON.stringify(trainingQueue));
+	  civLocked = true;
+	  console.log('processTime called with dt:', dt);
+	  console.log('trainingQueue:', JSON.stringify(trainingQueue));
 	  timeSec += dt;
-		// Handle auto-train - queue next villager when current one starts training
-		if (autoTrain) {
-		  const villagersInQueue = trainingQueue.filter(q => q.type === 'villager').length;
-		  const canAfford = res.food >= 50;
-		  const hasPopSpace = (scoutOn ? 1 : 0) + vils.length + militiaActive.length + fishingShipActive.length + 
-			knightActive.length + monkActive.length + mangonelActive.length + galleyActive.length + firegalleyActive.length + 
-			trainingQueue.filter(q => q.type !== 'tech').length < popCap;
-		  
-		  // Queue a villager if we have less than 2 in queue (one training + one waiting)
-		  if (villagersInQueue < 2 && canAfford && hasPopSpace) {
-			res.food -= 50;
-			totalSpent.food += 50;
-			const id = getNextUnitId('villager');
-			trainingQueue.push({
-			  id,
-			  type: 'villager',
-			  rem: TRAIN_T,
-			  total: TRAIN_T
-			});
-			addLog(`Auto-trained villager #${id}`);
-		  }
-		}
-	  // Process TC queue in TRUE FIFO order (villagers and techs mixed)
-		const tcQueue = trainingQueue.filter(j =>
-		  j.type === 'villager' || (j.type === 'tech' && j.building === 'TownCenter')
-		);
-		console.log('TC Queue:', tcQueue);
-		let timeLeft = dt;
-		while (timeLeft > 0 && tcQueue.length > 0) {
-			console.log('Processing TC queue, timeLeft:', timeLeft);
-		  const activeJob = tcQueue.shift();
-		  const tick = Math.min(timeLeft, activeJob.rem);
-		  activeJob.rem -= tick;
-		  timeLeft -= tick;
-
-		  if (activeJob.rem <= 0) {
-			trainingQueue = trainingQueue.filter(x => x !== activeJob);
-
-			if (activeJob.type === 'villager') {
-			  vils.push({
-				id: activeJob.id,
-				task: 'idle',
-				basket: {},
-				lifetimeGathered: {},
-				hist: [{ t: timeSec, task: 'idle' }],
-				selected: false
-			  });
-			  addLog(`Vil #${activeJob.id} spawned`);
-			} else {
-			  switch (activeJob.techId) {
-				case 'feudalage':
-				  currentAge = 'Feudal';
-				  addLog('Advanced to Feudal Age');
-				  break;
-				case 'castleage':
-				  currentAge = 'Castle';
-				  addLog('Advanced to Castle Age');
-				  break;
-				case 'loom':
-				  loomResearched = true;
-				  addLog('Researched Loom');
-				  break;
-				default:
-				  const tech = TECH_TYPES[activeJob.techId];
-				  if (researchedUpgrades.hasOwnProperty(activeJob.techId)) {
-					researchedUpgrades[activeJob.techId] = true;
-				  } else {
-					researchedTechs[activeJob.techId] = true;
-				  }
-				  addLog(`Researched ${tech.name}`);
-			  }
-			}
-		  } else {
-			tcQueue.unshift(activeJob);
-			break;
-		  }
-		}
-
-	  // Process all buildings (except TC which is handled above)
-		const buildingTypes = ['Barracks', 'Stable', 'ArcheryRange', 'Dock', 'Monastery', 'SiegeWorkshop', 'Blacksmith', 'LumberCamp', 'MiningCamp', 'Mill', 'Market', 'University'];
-
-		buildingTypes.forEach(buildingType => {
-		  const availableSlots = (nextBuildIds[buildingType] - 1) - builds.filter(b => b.name === buildingType).length;
-		  if (availableSlots <= 0) return;
-
-		  // Get all jobs (units + techs) for this building, in queue order
-		  const buildingJobs = trainingQueue.filter(j => {
-			if (j.type === 'tech') return j.building === buildingType;
-			const unitConfig = UNIT_TYPES[j.type];
-			return unitConfig && unitConfig.building === buildingType;
+	  
+	  // Take snapshot of sheep food for this cycle
+		const sheepSnapshot = {};
+		if (finiteResources.sheep) {
+		  finiteResources.sheep.forEach(sheep => {
+			sheepSnapshot[sheep.id] = sheep.remainingFood;
 		  });
-		  
-		    // ADD THIS DEBUG BLOCK HERE:
-		  if (buildingType === 'Dock' && buildingJobs.length > 0) {
-			console.log(`=== DOCK PROCESSING ===`);
-			buildingJobs.forEach(j => {
-			  console.log(`Job ${j.id} type ${j.type}: isUnit=${j.type !== 'tech'}, building=${j.building || (UNIT_TYPES[j.type] && UNIT_TYPES[j.type].building)}`);
+		}
+	  
+	  // Handle auto-train - queue next villager when current one starts training
+	  if (autoTrain) {
+		const villagersInQueue = trainingQueue.filter(q => q.type === 'villager').length;
+		const canAfford = res.food >= 50;
+		const hasPopSpace = (scoutOn ? 1 : 0) + vils.length + militiaActive.length + fishingShipActive.length + 
+		  knightActive.length + monkActive.length + mangonelActive.length + galleyActive.length + firegalleyActive.length + 
+		  trainingQueue.filter(q => q.type !== 'tech').length < popCap;
+		
+		// Queue a villager if we have less than 2 in queue (one training + one waiting)
+		if (villagersInQueue < 2 && canAfford && hasPopSpace) {
+		  res.food -= 50;
+		  totalSpent.food += 50;
+		  const id = getNextUnitId('villager');
+		  trainingQueue.push({
+			id,
+			type: 'villager',
+			rem: TRAIN_T,
+			total: TRAIN_T
+		  });
+		  addLog(`Auto-trained villager #${id}`);
+		}
+	  }
+	  
+	  // Process TC queue in TRUE FIFO order (villagers and techs mixed)
+	  const tcQueue = trainingQueue.filter(j =>
+		j.type === 'villager' || (j.type === 'tech' && j.building === 'TownCenter')
+	  );
+	  console.log('TC Queue:', tcQueue);
+	  let timeLeft = dt;
+	  while (timeLeft > 0 && tcQueue.length > 0) {
+		console.log('Processing TC queue, timeLeft:', timeLeft);
+		const activeJob = tcQueue.shift();
+		const tick = Math.min(timeLeft, activeJob.rem);
+		activeJob.rem -= tick;
+		timeLeft -= tick;
+
+		if (activeJob.rem <= 0) {
+		  trainingQueue = trainingQueue.filter(x => x !== activeJob);
+
+		  if (activeJob.type === 'villager') {
+			vils.push({
+			  id: activeJob.id,
+			  task: 'idle',
+			  basket: {},
+			  lifetimeGathered: {},
+			  hist: [{ t: timeSec, task: 'idle' }],
+			  selected: false
 			});
-		  }
-
-		  if (buildingJobs.length === 0) return;
-
-		  // Process up to availableSlots jobs simultaneously
-		  const activeJobs = buildingJobs.slice(0, availableSlots);
-		  let timeLeft = dt;
-
-		  while (timeLeft > 0 && activeJobs.length > 0) {
-			const nextFinish = Math.min(...activeJobs.map(j => j.rem));
-			const tick = Math.min(timeLeft, nextFinish);
-			
-			activeJobs.forEach(j => j.rem -= tick);
-			timeLeft -= tick;
-			
-			const completed = activeJobs.filter(j => j.rem <= 0);
-			completed.forEach(j => {
-			  trainingQueue = trainingQueue.filter(x => x !== j);
-			  
-			  if (j.type === 'tech') {
-				// Handle completed tech
-				const tech = TECH_TYPES[j.techId];
-				if (researchedUpgrades.hasOwnProperty(j.techId)) {
-				  researchedUpgrades[j.techId] = true;
+			addLog(`Vil #${activeJob.id} spawned`);
+		  } else {
+			switch (activeJob.techId) {
+			  case 'feudalage':
+				currentAge = 'Feudal';
+				addLog('Advanced to Feudal Age');
+				break;
+			  case 'castleage':
+				currentAge = 'Castle';
+				addLog('Advanced to Castle Age');
+				break;
+			  case 'loom':
+				loomResearched = true;
+				addLog('Researched Loom');
+				break;
+			  default:
+				const tech = TECH_TYPES[activeJob.techId];
+				if (researchedUpgrades.hasOwnProperty(activeJob.techId)) {
+				  researchedUpgrades[activeJob.techId] = true;
 				} else {
-				  researchedTechs[j.techId] = true;
+				  researchedTechs[activeJob.techId] = true;
 				}
 				addLog(`Researched ${tech.name}`);
-			  } else {
-				if (j.type === 'fishingship') {
-				  fishingShipActive.push({
-					id: j.id,
-					task: 'idle',
-					basket: { food: 0 },
-					lifetimeGathered: { food: 0 },
-					hist: [{ t: timeSec, task: 'idle' }]
-				  });
-				} else if (j.type === 'transportship') {
-				  transportshipActive.push({
-					id: j.id,
-					task: 'idle',
-					basket: {},
-					lifetimeGathered: {},
-					hist: [{ t: timeSec, task: 'idle' }]
-				  });
-				} else {
-				  const unitArray = getUnitArrayDynamic(j.type);
-				  if (unitArray) {
-					unitArray.push(j.id);
-				  }
-				}
-				
-				const unitNames = {
-				  fishingship: 'Fishing Ship',
-				  transportship: 'Transport Ship',
-				  militia: researchedUpgrades.longswordsman ? 'Long Swordsman' : (researchedUpgrades.maa ? 'Men-at-Arms' : 'Militia'),
-				  knight: 'Knight',
-				  monk: 'Monk',
-				  mangonel: 'Mangonel',
-				  galley: researchedUpgrades.wargalley ? 'War Galley' : 'Galley',
-				  scout: researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout',
-				  archer: researchedUpgrades.crossbowman ? 'Crossbowman' : 'Archer',
-				  spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
-				  eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
-				  firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
-				  skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',  
-				  camel: 'Camel',  
-				  steppelancer: 'Steppe Lancer',
-				  jianswordsman: { food: 60, gold: 40 },
-				  cavalryarcher: { wood: 40, gold: 60 },
-				  heiguangcavalry: { food: 60, gold: 75 },
-				  scorpion: { wood: 75, gold: 75 }
-				};
-				
-				const displayName = unitNames[j.type] || j.type;
-				addLog(`${displayName} #${j.id} spawned`);
-			  }
-			});
-			
-			// Remove completed jobs from activeJobs
-			completed.forEach(completedJob => {
-			  const index = activeJobs.indexOf(completedJob);
-			  if (index > -1) activeJobs.splice(index, 1);
-			});
+			}
 		  }
+		} else {
+		  tcQueue.unshift(activeJob);
+		  break;
+		}
+	  }
+
+	  // Process all buildings (except TC which is handled above)
+	  const buildingTypes = ['Barracks', 'Stable', 'ArcheryRange', 'Dock', 'Monastery', 'SiegeWorkshop', 'Blacksmith', 'LumberCamp', 'MiningCamp', 'Mill', 'Market', 'University'];
+
+	  buildingTypes.forEach(buildingType => {
+		const availableSlots = (nextBuildIds[buildingType] - 1) - builds.filter(b => b.name === buildingType).length;
+		if (availableSlots <= 0) return;
+
+		// Get all jobs (units + techs) for this building, in queue order
+		const buildingJobs = trainingQueue.filter(j => {
+		  if (j.type === 'tech') return j.building === buildingType;
+		  const unitConfig = UNIT_TYPES[j.type];
+		  return unitConfig && unitConfig.building === buildingType;
+		});
+		
+		// ADD THIS DEBUG BLOCK HERE:
+		if (buildingType === 'Dock' && buildingJobs.length > 0) {
+		  console.log(`=== DOCK PROCESSING ===`);
+		  buildingJobs.forEach(j => {
+			console.log(`Job ${j.id} type ${j.type}: isUnit=${j.type !== 'tech'}, building=${j.building || (UNIT_TYPES[j.type] && UNIT_TYPES[j.type].building)}`);
+		  });
+		}
+
+		if (buildingJobs.length === 0) return;
+
+		// Process up to availableSlots jobs simultaneously
+		const activeJobs = buildingJobs.slice(0, availableSlots);
+		let timeLeft = dt;
+
+		while (timeLeft > 0 && activeJobs.length > 0) {
+		  const nextFinish = Math.min(...activeJobs.map(j => j.rem));
+		  const tick = Math.min(timeLeft, nextFinish);
+		  
+		  activeJobs.forEach(j => j.rem -= tick);
+		  timeLeft -= tick;
+		  
+		  const completed = activeJobs.filter(j => j.rem <= 0);
+		  completed.forEach(j => {
+			trainingQueue = trainingQueue.filter(x => x !== j);
+			
+			if (j.type === 'tech') {
+			  // Handle completed tech
+			  const tech = TECH_TYPES[j.techId];
+			  if (researchedUpgrades.hasOwnProperty(j.techId)) {
+				researchedUpgrades[j.techId] = true;
+			  } else {
+				researchedTechs[j.techId] = true;
+			  }
+			  addLog(`Researched ${tech.name}`);
+			} else {
+			  if (j.type === 'fishingship') {
+				fishingShipActive.push({
+				  id: j.id,
+				  task: 'idle',
+				  basket: { food: 0 },
+				  lifetimeGathered: { food: 0 },
+				  hist: [{ t: timeSec, task: 'idle' }]
+				});
+			  } else if (j.type === 'transportship') {
+				transportshipActive.push({
+				  id: j.id,
+				  task: 'idle',
+				  basket: {},
+				  lifetimeGathered: {},
+				  hist: [{ t: timeSec, task: 'idle' }]
+				});
+			  } else {
+				const unitArray = getUnitArrayDynamic(j.type);
+				if (unitArray) {
+				  unitArray.push(j.id);
+				}
+			  }
+			  
+			  const unitNames = {
+				fishingship: 'Fishing Ship',
+				transportship: 'Transport Ship',
+				militia: researchedUpgrades.longswordsman ? 'Long Swordsman' : (researchedUpgrades.maa ? 'Men-at-Arms' : 'Militia'),
+				knight: 'Knight',
+				monk: 'Monk',
+				mangonel: 'Mangonel',
+				galley: researchedUpgrades.wargalley ? 'War Galley' : 'Galley',
+				scout: researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout',
+				archer: researchedUpgrades.crossbowman ? 'Crossbowman' : 'Archer',
+				spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
+				eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
+				firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
+				skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',      
+				camel: 'Camel',      
+				steppelancer: 'Steppe Lancer',
+				jianswordsman: { food: 60, gold: 40 },
+				cavalryarcher: { wood: 40, gold: 60 },
+				heiguangcavalry: { food: 60, gold: 75 },
+				scorpion: { wood: 75, gold: 75 }
+			  };
+			  
+			  const displayName = unitNames[j.type] || j.type;
+			  addLog(`${displayName} #${j.id} spawned`);
+			}
+		  });
+		  
+		  // Remove completed jobs from activeJobs
+		  completed.forEach(completedJob => {
+			const index = activeJobs.indexOf(completedJob);
+			if (index > -1) activeJobs.splice(index, 1);
+		  });
+		}
+	  });
+
+	  // Handle boar luring system - process state transitions during time advancement    
+	  let remainingTime = dt;    
+	  let currentTime = timeSec - dt; // Start from beginning of this cycle
+
+	  while (remainingTime > 0) {    
+		// Find the next boar state transition that should happen    
+		let nextTransitionTime = Infinity;    
+		let nextTransitionBoar = null;    
+		let nextTransitionType = null;
+
+		finiteResources.bighunt?.forEach(boar => {    
+		  if (boar.state === 'being_lured' && boar.luringVillager) {    
+			const lureCompleteTime = boar.lureStartTime + 32;    
+			if (lureCompleteTime > currentTime && lureCompleteTime <= timeSec) {    
+			  if (lureCompleteTime < nextTransitionTime) {    
+				nextTransitionTime = lureCompleteTime;    
+				nextTransitionBoar = boar;    
+				nextTransitionType = 'lure_complete';    
+			  }    
+			}    
+		  }    
+		  
+		  if (boar.state === 'being_killed') {    
+			const killCompleteTime = boar.killStartTime + 8;    
+			if (killCompleteTime > currentTime && killCompleteTime <= timeSec) {    
+			  if (killCompleteTime < nextTransitionTime) {    
+				nextTransitionTime = killCompleteTime;    
+				nextTransitionBoar = boar;    
+				nextTransitionType = 'kill_complete';    
+			  }    
+			}    
+		  }    
 		});
 
-	  // gathering & track per-villager totals
-	  vils.forEach(v => {
-		if (v.task in FOOD_RATE) {
+		// Process time up to next transition (or end of cycle)    
+		const timeToProcess = Math.min(remainingTime, nextTransitionTime - currentTime);    
+		if (timeToProcess > 0) {    
+		  currentTime += timeToProcess;    
+		  remainingTime -= timeToProcess;    
+		}
+
+		// Handle the transition if we reached one    
+		if (nextTransitionBoar && currentTime >= nextTransitionTime) {    
+		  const originalTimeSec = timeSec;    
+		  timeSec = nextTransitionTime; // Set to exact transition time for logging    
+		  
+		  if (nextTransitionType === 'lure_complete') {    
+			// Luring completed, start kill phase    
+			nextTransitionBoar.state = 'being_killed';    
+			nextTransitionBoar.killStartTime = nextTransitionTime;    
+			nextTransitionBoar.hp -= 3; // Lurer inflicts 3 damage    
+			  
+			const villager = vils.find(v => v.id === nextTransitionBoar.luringVillager);    
+			if (villager) {    
+			  villager.task = 'idle'; // Temporarily idle during kill phase    
+			  recordHistory(villager, 'killing boar');    
+			}    
+			  
+			addLog(`${nextTransitionBoar.type.charAt(0).toUpperCase() + nextTransitionBoar.type.slice(1)} #${nextTransitionBoar.id} lured to TC, starting kill phase`);    
+		  }    
+		  
+		  else if (nextTransitionType === 'kill_complete') {    
+			// Kill completed    
+			nextTransitionBoar.state = 'dead';    
+			nextTransitionBoar.hp = 0;    
+			nextTransitionBoar.lastUpdateTime = nextTransitionTime; // Important: Set decay timer  
+			  
+			// Automatically assign luring villager to gather          
+			const villager = vils.find(v => v.id === nextTransitionBoar.luringVillager);          
+			if (villager) {          
+			  villager.task = 'bighunt';          
+			  villager.taskStartTime = nextTransitionTime;          
+			  delete villager.assignedBoar; // Clear any luring assignment          
+			  nextTransitionBoar.workersAssigned.push(villager.id);          
+			  recordHistory(villager, `${nextTransitionBoar.type} #${nextTransitionBoar.id}`);          
+			}    
+			  
+			nextTransitionBoar.luringVillager = null;    
+			addLog(`${nextTransitionBoar.type.charAt(0).toUpperCase() + nextTransitionBoar.type.slice(1)} #${nextTransitionBoar.id} killed! Villager #${villager?.id} assigned to gather (${nextTransitionBoar.remainingFood} food available)`);    
+		  }    
+		  
+		  timeSec = originalTimeSec; // Restore original time    
+		}    
+		  
+		// If no more transitions, consume remaining time    
+		if (nextTransitionTime === Infinity) {    
+		  break;    
+		}    
+	  }
+
+	  // Main gathering loop (excluding finite resources)
+	  vils.forEach(v => {    
+		if (v.task in FOOD_RATE && !['sheep', 'hunt', 'berries', 'bighunt'].includes(v.task)) {
 		  let dur = dt;
-		  if (v.justSpawned) {
-			dur = Math.max(0, dt - 1.5);
-			v.justSpawned = false;
+
+		  // Apply drop-off penalty from previous cycle
+		  if (v.dropoffPenalty) {
+			dur = Math.max(0, dur - v.dropoffPenalty);
+			v.dropoffPenalty = Math.max(0, v.dropoffPenalty - dt);
 		  }
 
-		  let rate = FOOD_RATE[v.task];
-		  const civ = CIVILIZATIONS[selectedCiv];
+		  // Apply initial task delay
+		  const taskStartTime = v.taskStartTime || 0;
+		  const timeOnCurrentTask = timeSec - taskStartTime;
+		  const taskDelay = TASK_DELAYS[v.task] || 0;
 
-		  // Apply civ bonuses
-			if (v.task === 'sheep' && civ.bonuses.shepherdWorkRate) {
-				rate *= civ.bonuses.shepherdWorkRate;
-			}
-			if (v.task === 'berries' && civ.bonuses.foragerWorkRate) {
-				rate *= civ.bonuses.foragerWorkRate;
-			}
-			if (v.task === 'hunt' && civ.bonuses.hunterWorkRate) {
-				rate *= civ.bonuses.hunterWorkRate;
+		  if (timeOnCurrentTask < taskDelay) {
+			const remainingDelay = taskDelay - timeOnCurrentTask;
+			dur = Math.max(0, dur - remainingDelay);
+		  }
+
+		  if (dur > 0) {
+			let rate = FOOD_RATE[v.task];
+
+			// Apply civilization bonuses
+			const civ = CIVILIZATIONS[selectedCiv];
+			if (['sheep', 'hunt', 'berries', 'bighunt'].includes(v.task)) {
+			  handleFiniteResourceGathering(v, dur, sheepSnapshot);
 			}
 
-		  const collected = rate * dur;
-		  v.basket.food = (v.basket.food || 0) + collected;
-		  v.lifetimeGathered.food += (collected || 0);
-		  if (v.basket.food >= CAPACITY[v.task]) {
-			res.food += CAPACITY[v.task];
-			totalGathered.food += CAPACITY[v.task];
-			v.basket.food -= CAPACITY[v.task];
-			addLog(`Vil #${v.id} dropped off ${CAPACITY[v.task]} food`);
+			const collected = rate * dur;
+			v.basket.food = (v.basket.food || 0) + collected;
+			v.lifetimeGathered.food += collected;
+
+			// Handle drop-off with delay penalty
+			if (v.basket.food >= CAPACITY[v.task]) {
+			  res.food += CAPACITY[v.task];
+			  totalGathered.food += CAPACITY[v.task];
+			  v.basket.food -= CAPACITY[v.task];
+			  
+			  // Apply drop-off penalty for next processing cycle
+			  v.dropoffPenalty = (v.dropoffPenalty || 0) + TASK_DELAYS.dropoff;
+			  
+			  addLog(`Vil #${v.id} dropped off ${CAPACITY[v.task]} food`);
+			}
 		  }
 		}
 
-		['wood', 'gold', 'stone'].forEach(k => {
-		  if (v.task === k) {
+		// Handle wood, gold, stone gathering with same logic
+		['wood', 'gold', 'stone'].forEach(resource => {
+		  if (v.task === resource) {
 			let dur = dt;
-			if (v.justSpawned) {
-			  dur = Math.max(0, dt - 1.5);
-			  v.justSpawned = false;
+			
+			// Apply drop-off penalty from previous cycle
+			if (v.dropoffPenalty) {
+			  dur = Math.max(0, dur - v.dropoffPenalty);
+			  v.dropoffPenalty = Math.max(0, v.dropoffPenalty - dt);
 			}
-			const collected = FLAT_RATE * dur;
-			v.basket[k] = (v.basket[k] || 0) + collected;
-			v.lifetimeGathered[k] += (collected || 0);
-			if (v.basket[k] >= CAPACITY[k]) {
-			  res[k] += CAPACITY[k];
-			  totalGathered[k] += CAPACITY[k];
-			  v.basket[k] -= CAPACITY[k];
-			  addLog(`Vil #${v.id} dropped off ${CAPACITY[k]} ${k}`);
+			
+			// Apply initial task delay
+			const taskStartTime = v.taskStartTime || 0;
+			const timeOnCurrentTask = timeSec - taskStartTime;
+			const taskDelay = TASK_DELAYS[v.task] || 0;
+			
+			if (timeOnCurrentTask < taskDelay) {
+			  const remainingDelay = taskDelay - timeOnCurrentTask;
+			  dur = Math.max(0, dur - remainingDelay);
+			}
+
+			if (dur > 0) {
+			  const rate = RESOURCE_RATES[resource];
+			  const collected = rate * dur;
+			  v.basket[resource] = (v.basket[resource] || 0) + collected;
+			  v.lifetimeGathered[resource] += collected;
+			  
+			  // Handle drop-off with delay penalty
+			  if (v.basket[resource] >= CAPACITY[resource]) {
+				res[resource] += CAPACITY[resource];
+				totalGathered[resource] += CAPACITY[resource];
+				v.basket[resource] -= CAPACITY[resource];
+				
+				// Apply drop-off penalty for next processing cycle
+				v.dropoffPenalty = (v.dropoffPenalty || 0) + TASK_DELAYS.dropoff;
+				
+				addLog(`Vil #${v.id} dropped off ${CAPACITY[resource]} ${resource}`);
+			  }
 			}
 		  }
 		});
 	  });
+
+	  // Handle finite resource gathering separately
+	  vils.forEach(v => {
+		if (['sheep', 'hunt', 'berries', 'bighunt'].includes(v.task)) {
+		  let dur = dt;
+		  
+		  // Apply drop-off penalty from previous cycle
+		  if (v.dropoffPenalty) {
+			dur = Math.max(0, dur - v.dropoffPenalty);
+			v.dropoffPenalty = Math.max(0, v.dropoffPenalty - dt);
+		  }
+		  
+		  // Apply initial task delay
+		  const taskStartTime = v.taskStartTime || 0;
+		  const timeOnCurrentTask = timeSec - taskStartTime;
+		  const taskDelay = TASK_DELAYS[v.task] || 0;
+		  
+		  if (timeOnCurrentTask < taskDelay) {
+			const remainingDelay = taskDelay - timeOnCurrentTask;
+			dur = Math.max(0, dur - remainingDelay);
+		  }
+
+		  if (dur > 0) {
+			handleFiniteResourceGathering(v, dur, sheepSnapshot);
+		  }
+		}
+	  });
+	  
+		// Reset decay flags for next cycle
+		Object.values(finiteResources).flat().forEach(resource => {
+		  if (resource && resource.decayAppliedThisCycle) {
+			resource.decayAppliedThisCycle = false;
+		  }
+		});
 
 	  fishingShipActive.forEach(ship => {
 		if (ship.task && ['closedeepfish', 'fardeepfish', 'shorefish'].includes(ship.task)) {
@@ -2617,23 +2924,32 @@
 
 	  // building
 	  builds.forEach(b => {
-		const cnt = vils.filter(v => v.bldUid === b.uid).length;
-		  if (cnt) {
-			let workRate = 1 + 0.3333 * (cnt - 1); // Base work rate with multiple villagers
-			// Civ bonuses
-			if (selectedCiv === 'wu' && b.name === 'House') {
-			  workRate *= CIVILIZATIONS.wu.bonuses.houseBuildSpeed; // 2.0 = 100% faster
-			}
-			// elseif (selectedCiv === 'spanish') {
-			//   workRate *= 1.3;
-			// }
-			// elseif (selectedCiv === 'cumans' && b.name === 'TownCenter' && currentAge === 'Feudal') {
-			//   workRate *= 0.5; // Need to check how slow they build feudal TCs
-			// }
-			
-			b.rem -= dt * workRate;
+		const workersOnBuilding = vils.filter(v => v.bldUid === b.uid);
+		let effectiveWorkers = 0;
+		
+		// NEW: Count only workers who have finished their setup delay
+		workersOnBuilding.forEach(worker => {
+		  const taskStartTime = worker.taskStartTime || 0;
+		  const timeOnBuilding = timeSec - taskStartTime;
+		  const buildDelay = getBuildingDelay(b.name);
+		  
+		  if (timeOnBuilding >= buildDelay) {
+			effectiveWorkers += 1;
 		  }
+		});
+		
+		if (effectiveWorkers > 0) {
+		  let workRate = 1 + 0.3333 * (effectiveWorkers - 1);
+		  
+		  // Apply civilization bonuses (unchanged)
+		  if (selectedCiv === 'wu' && b.name === 'House') {
+			workRate *= CIVILIZATIONS.wu.bonuses.houseBuildSpeed;
+		  }
+		  
+		  b.rem -= dt * workRate;
+		}
 	  });
+	  
 	  const done = builds.filter(b => b.rem <= 0);
 	  done.forEach(b => {
 		builds = builds.filter(x => x.uid !== b.uid);
@@ -2656,6 +2972,228 @@
 		});
 	  });
 	}
+	
+	function handleFiniteResourceGathering(villager, duration, sheepSnapshot) {
+	  const resourceType = villager.task;
+	  let assignedResource = null;
+	  let resourcePool = null;
+	  
+	  // Determine which resource pool to use
+		if (resourceType === 'sheep') {
+			resourcePool = finiteResources.sheep;
+			console.log(`Resource type is ${resourceType}, pool has ${resourcePool.length} resources`);
+		} else if (resourceType === 'hunt') {
+		  const huntType = document.querySelector('input[name="hunt-type"]:checked')?.value || 'deer';
+		  resourcePool = finiteResources.hunt.filter(h => h.type === huntType);
+		} else if (resourceType === 'berries') {
+			resourcePool = finiteResources.berries;
+		} else if (resourceType === 'bighunt') {
+		  resourcePool = finiteResources.bighunt.filter(h => h.state === 'dead');
+		  console.log(`Available dead boars: ${resourcePool.length}`);
+		  if (resourcePool.length === 0) {
+			alert('No boars have been lured and killed yet!');
+			return;
+		  }
+		}
+	  
+	  // Find assigned resource or assign to first available
+	  assignedResource = resourcePool.find(resource => 
+		resource.workersAssigned.includes(villager.id) && !resource.depleted
+	  );
+	  
+	  if (!assignedResource) {
+		assignedResource = resourcePool.find(resource => !resource.depleted);
+		console.log(`Assigned resource type: ${assignedResource?.type || 'undefined'}, ID: ${assignedResource?.id}`);
+		if (assignedResource) {
+		  assignedResource.workersAssigned.push(villager.id);
+		} else {
+		  villager.task = 'idle';
+		  addLog(`Vil #${villager.id} has no ${resourceType} available, going idle`);
+		  return;
+		}
+	  }
+	  
+	  if (assignedResource) {
+		  console.log(`DEBUG: Villager ${villager.id} found ${resourceType} ${assignedResource.id} with ${assignedResource.remainingFood} food`);
+		} else {
+		  console.log(`DEBUG: Villager ${villager.id} could not find available bighunt resource`);
+		}
+	  
+	  // Apply decay for resources that decay over time (once per individual resource per cycle)
+		if (resourceType === 'sheep' || resourceType === 'hunt' || resourceType === 'bighunt') {
+		  // Check if this specific resource needs decay applied this cycle
+		  if (!assignedResource.decayAppliedThisCycle) {  
+			assignedResource.decayAppliedThisCycle = true;
+			let decayRate = 0;
+			
+			if (assignedResource.type && DECAY_RATES[assignedResource.type]) {
+			  decayRate = DECAY_RATES[assignedResource.type];
+			} else {
+			  // Fallback to resource category rates
+			  if (resourceType === 'sheep') decayRate = DECAY_RATES.sheep;
+			  else if (resourceType === 'hunt') decayRate = DECAY_RATES.hunt;
+			  else if (resourceType === 'bighunt') decayRate = DECAY_RATES.boar;
+			}
+			
+			const decayAmount = decayRate * duration;
+			if (resourceType === 'sheep') {
+			  console.log(`Sheep ${assignedResource.id}: applied ${decayAmount.toFixed(2)} decay over ${duration.toFixed(2)}s, from ${(assignedResource.remainingFood + decayAmount).toFixed(2)} to ${assignedResource.remainingFood.toFixed(2)}`);
+			}
+			if (resourceType === 'berries') {
+			  updateBerriesProgress();
+			}
+			
+			assignedResource.remainingFood = Math.max(0, assignedResource.remainingFood - decayAmount);
+			assignedResource.decayAppliedThisCycle = true;
+		  }
+		}
+		
+	  
+	  // Calculate gather rate with civilization bonuses
+	  let gatherRate = FOOD_RATE[resourceType];
+	  const civ = CIVILIZATIONS[selectedCiv];
+	  if (resourceType === 'sheep' && civ.bonuses.shepherdWorkRate) {
+		gatherRate *= civ.bonuses.shepherdWorkRate;
+	  }
+	  if (resourceType === 'berries' && civ.bonuses.foragerWorkRate) {
+		gatherRate *= civ.bonuses.foragerWorkRate;
+	  }
+	  if (resourceType === 'hunt' && civ.bonuses.hunterWorkRate) {
+		gatherRate *= civ.bonuses.hunterWorkRate;
+	  }
+	  
+		const availableFood = (sheepSnapshot && sheepSnapshot[assignedResource.id]) || assignedResource.remainingFood;
+		const maxGatherable = Math.min(availableFood, gatherRate * duration);
+		console.log(`Villager ${villager.id}: trying to gather ${(gatherRate * duration).toFixed(2)}, limited to ${maxGatherable.toFixed(2)} by remaining food`); // ADD THIS
+
+		if (maxGatherable > 0) {
+			if (resourceType === 'sheep') {
+			  console.log(`Villager ${villager.id}: gathered ${maxGatherable.toFixed(2)}, decay was ${assignedResource.decayAppliedThisCycle ? 'applied' : 'not applied'}, sheep ${assignedResource.id} has ${assignedResource.remainingFood.toFixed(2)} left`);
+			}
+		  villager.basket.food = (villager.basket.food || 0) + maxGatherable;
+		  villager.lifetimeGathered.food += maxGatherable;
+		  assignedResource.remainingFood -= maxGatherable;
+		  
+		  console.log(`Villager ${villager.id}: gathered ${maxGatherable.toFixed(2)}, basket now ${villager.basket.food.toFixed(2)}, ${resourceType} has ${assignedResource.remainingFood.toFixed(2)} left`);
+		
+		// Handle drop-off
+		const capacity = CAPACITY[resourceType];
+		if (villager.basket.food >= capacity) {
+		  const oldResFood = res.food;
+		  const oldTotalGathered = totalGathered.food;
+		  
+		  res.food += capacity;
+		  totalGathered.food += capacity;
+		  villager.basket.food -= capacity;
+		  villager.dropoffPenalty = (villager.dropoffPenalty || 0) + TASK_DELAYS.dropoff;
+		  
+		  console.log(`*** DROP-OFF: Vil ${villager.id} dropped ${capacity} food. res.food: ${oldResFood.toFixed(1)} → ${res.food.toFixed(1)}, totalGathered: ${oldTotalGathered.toFixed(1)} → ${totalGathered.food.toFixed(1)} ***`);
+		  
+		  const resourceName = resourceType === 'hunt' ? `${assignedResource.type} #${assignedResource.id}` : `${resourceType} #${assignedResource.id}`;
+		  addLog(`Vil #${villager.id} dropped off ${capacity} food from ${resourceName}`);
+		}
+	}
+	  
+	  // Check if resource is depleted
+	  if (assignedResource.remainingFood <= 0) {
+		assignedResource.depleted = true;
+		const index = assignedResource.workersAssigned.indexOf(villager.id);
+		if (villager.basket.food > 0) {
+		  res.food += villager.basket.food;
+		  totalGathered.food += villager.basket.food;
+		  const droppedAmount = villager.basket.food;
+		  villager.basket.food = 0;
+		  addLog(`Vil #${villager.id} dropped ${droppedAmount.toFixed(1)} food (finished ${resourceType} #${assignedResource.id})`);
+		}
+		if (index > -1) {
+		  assignedResource.workersAssigned.splice(index, 1);
+		}
+		
+		const remainingOfType = resourcePool.filter(resource => !resource.depleted);
+		if (remainingOfType.length === 0 && villager.basket.food > 0) {
+		  res.food += villager.basket.food;
+		  totalGathered.food += villager.basket.food;
+		  const droppedAmount = villager.basket.food;
+		  villager.basket.food = 0;
+		  addLog(`Vil #${villager.id} auto-dropped ${droppedAmount.toFixed(1)} food (no more ${resourceType} available)`);
+		}
+		const nextResource = resourcePool.find(resource => !resource.depleted);
+		if (nextResource) {
+		  nextResource.workersAssigned.push(villager.id);
+		  const oldName = resourceType === 'hunt' ? `${assignedResource.type} #${assignedResource.id}` : `${resourceType} #${assignedResource.id}`;
+		  const newName = resourceType === 'hunt' ? `${nextResource.type} #${nextResource.id}` : `${resourceType} #${nextResource.id}`;
+		  addLog(`Vil #${villager.id} moved from depleted ${oldName} to ${newName}`);
+		} else {  
+		  if (villager.basket.food > 0) {
+			res.food += villager.basket.food;
+			totalGathered.food += villager.basket.food;
+			addLog(`Vil #${villager.id} auto-dropped ${villager.basket.food.toFixed(1)} food`);
+			villager.basket.food = 0;
+		  }
+		  villager.task = 'idle';  
+		  addLog(`Vil #${villager.id} finished last ${resourceType}, going idle`);  
+		}
+	  }
+	}
+	
+	function initializeFiniteResources() {
+	  finiteResources = {
+		sheep: [],
+		hunt: [],
+		berries: []
+	  };
+	  
+	  // Create 8 sheep by default
+	  for (let i = 0; i < 8; i++) {
+		finiteResources.sheep.push({
+		  id: i + 1,
+		  remainingFood: 100,
+		  workersAssigned: [],
+		  lastUpdateTime: timeSec,
+		  depleted: false
+		});
+	  }
+	  
+	  // Create 4 deer by default
+		for (let i = 0; i < 4; i++) {
+		  finiteResources.hunt.push({
+			id: i + 1,
+			type: 'deer', 
+			remainingFood: 140,
+			workersAssigned: [],
+			lastUpdateTime: timeSec,
+			depleted: false
+		  });
+		}
+	  
+	  // Create 6 berry bushes by default
+	  for (let i = 0; i < 6; i++) {
+		finiteResources.berries.push({
+		  id: i + 1,
+		  remainingFood: 125,
+		  workersAssigned: [],
+		  lastUpdateTime: timeSec,
+		  depleted: false
+		});
+	  }
+		finiteResources.bighunt = [];
+		for (let i = 0; i < 2; i++) {
+		  finiteResources.bighunt.push({
+			id: i + 1,
+			type: 'boar',
+			remainingFood: 340,
+			hp: 75,
+			maxHp: 75,
+			state: 'wild', // wild, being_lured, being_killed, dead
+			luringVillager: null,
+			lureStartTime: null,
+			killStartTime: null,
+			workersAssigned: [],
+			lastUpdateTime: timeSec,
+			depleted: false
+		  });
+		}
+	}
 
 	// RENDER ZONES
 	function renderZones() {
@@ -2664,6 +3202,8 @@
 		['berries', 'Berries'],
 		['sheep', 'Sheep'],
 		['hunt', 'Hunt'],
+		['bighunt', 'Big Hunt'],
+		['lurebighunt', 'Lure Big Hunt'],
 		['fish', 'Fish'],
 		['farm', 'Farm'],
 		['repair', 'Repair'],
@@ -2672,11 +3212,16 @@
 		['stone', 'Stone'],
 		['closedeepfish', 'Deep Fish (Close)'],
 		['fardeepfish', 'Deep Fish (Far)'],
-		['shorefish', 'Shore Fish (boats only)']
+		['shorefish', 'Shore Fish (boats only)'],
 	  ];
 	  
 	  td.innerHTML = '';
+	  
 	  zones.forEach(([id, label]) => {
+		// Create container for zone + controls
+		const container = document.createElement('div');
+		container.className = 'inline-block';
+		
 		const z = document.createElement('div');
 		z.id = 'zone-' + id;
 		z.className = 'task-zone ' + id;
@@ -2687,12 +3232,10 @@
 		  const gatherInfo = getGatherRate(id);
 		  let tooltipText = `${label}\nGather Rate: ${gatherInfo.rate.toFixed(1)}/min`;
 		  
-		  // Add capacity info
 		  if (CAPACITY[id]) {
 			tooltipText += `\nCapacity: ${CAPACITY[id]}`;
 		  }
 		  
-		  // Add civilization bonuses if any
 		  if (gatherInfo.bonuses.length > 0) {
 			tooltipText += '\n\nCivilization Bonuses:';
 			gatherInfo.bonuses.forEach(bonus => {
@@ -2731,7 +3274,6 @@
 			if (typeof i === 'string' && i.startsWith('ship-')) {
 			  const shipId = parseInt(i.replace('ship-', ''));
 
-			  // Allow fishing ships to go idle
 			  if (id === 'idle') {
 				const ship = fishingShipActive.find(s => s.id === shipId);
 				if (ship) {
@@ -2767,6 +3309,56 @@
 			  }
 			  return;
 			}
+			
+			if (id === 'lurebighunt') {
+			  // Only allow one villager to lure
+			  if (ids.length > 1) {
+				alert('Only one villager can lure at a time');
+				return;
+			  }
+			  
+			  const vilId = ids[0];
+			  const villager = vils.find(v => v.id === vilId);
+			  if (!villager) return;
+			  
+			  // Find available wild boar/rhino
+			  const wildBoar = finiteResources.bighunt?.find(boar => boar.state === 'wild' && !boar.depleted);
+			  if (!wildBoar) {
+				alert('No wild boar/rhino available for luring');
+				return;
+			  }
+			  
+			  // Show explanation popup
+			  if (!boarLuringAlertShown) {
+				const showAgain = confirm(
+				  `BOAR LURING SYSTEM:\n\n` +
+				  `1. Villager will lure boar/rhino (taking 32 seconds to shoot once and go back to TC)\n` +
+				  `2. Boar will be killed automatically within 8 seconds of that\n` +
+				  `3. Luring villager will then gather from the dead boar automatically\n` +
+				  `4. You can assign more villagers to help gather\n\n` +
+				  `Click OK to continue, Cancel to continue & not show this again.`
+				);
+				
+				if (!showAgain) {
+				  boarLuringAlertShown = true;
+				}
+			  }
+			  
+			  // Start luring
+			  villager.task = 'lurebighunt';
+			  villager.taskStartTime = timeSec;
+			  villager.assignedBoar = wildBoar.id;
+			  
+			  wildBoar.state = 'being_lured';
+			  wildBoar.luringVillager = vilId;
+			  wildBoar.lureStartTime = timeSec;
+			  
+			  recordHistory(villager, `luring ${wildBoar.type} #${wildBoar.id}`);
+			  addLog(`Vil #${vilId} started luring ${wildBoar.type} #${wildBoar.id}`);
+			  
+			  renderAll();
+			  return;
+			}
 
 			// Handle villagers
 			const v = vils.find(x => x.id === i);
@@ -2778,6 +3370,7 @@
 			}
 
 			v.task = id;
+			v.taskStartTime = timeSec;
 			delete v.bldUid;
 
 			const msg = `Vil #${i}→${id}`;
@@ -2792,22 +3385,344 @@
 		  renderAll();
 		});
 
-		td.appendChild(z);
+		container.appendChild(z);
+		
+		// Add resource controls for specific zones
+		if (id === 'sheep') {
+		  createSheepControls(container);
+		} else if (id === 'berries') {
+		  createBerriesControls(container);
+		} else if (id === 'hunt') {
+		  createHuntControls(container);
+		} else if (id === 'bighunt') {
+		  createBighuntControls(container);
+		}
+		
+		td.appendChild(container);
+	  });
+	  
+	  // Add event listeners for +/- buttons
+	  ['sheep', 'hunt', 'bighunt', 'berries'].forEach(type => {
+		const plusBtn = document.getElementById(`${type}-plus`);
+		const minusBtn = document.getElementById(`${type}-minus`);
+		const countSpan = document.getElementById(`${type}-count`);
+		
+		if (plusBtn && minusBtn && countSpan) {
+		  plusBtn.onclick = () => {
+			let current = parseInt(countSpan.textContent);
+			countSpan.textContent = current + 1;
+			updateFiniteResourceCounts();
+		  };
+		  
+		  minusBtn.onclick = () => {
+			let current = parseInt(countSpan.textContent);
+			if (current > 0) {
+			  countSpan.textContent = current - 1;
+			  updateFiniteResourceCounts();
+			}
+		  };
+		}
+	  });
+
+	  // Add radio button listeners
+	  ['sheep-type', 'hunt-type', 'bighunt-type'].forEach(name => {
+		document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
+		  radio.onchange = () => updateFiniteResourceCounts();
+		});
 	  });
 	}
 
-	// Render completed buildings count
-	function renderBuildingsList() {
-	  const ul = document.getElementById('building-list');
-	  ul.innerHTML = '';
-	  Object.keys(BUILD_COST).forEach(name => {
-		const queued = nextBuildIds[name] - 1;
-		const inProg = builds.filter(b => b.name === name).length;
-		const done = queued - inProg;
-		const li = document.createElement('li');
-		li.textContent = `${name}: ${done}`;
-		ul.appendChild(li);
-	  });
+	function createSheepControls(container) {
+	  const sheepControls = document.createElement('div');
+	  sheepControls.className = 'bg-white p-1 rounded shadow mt-1 text-xs';
+	  
+	  const typeDiv = document.createElement('div');
+	  typeDiv.className = 'text-center mb-1';
+	  typeDiv.innerHTML = '<span>🐑</span>';
+	  
+	  const sheepRadio = document.createElement('input');
+	  sheepRadio.type = 'radio';
+	  sheepRadio.name = 'sheep-type';
+	  sheepRadio.value = 'sheep';
+	  sheepRadio.checked = true;
+	  if (civLocked) sheepRadio.disabled = true;
+	  
+	  const cowSpan = document.createElement('span');
+	  cowSpan.textContent = '🐄';
+	  
+	  const cowRadio = document.createElement('input');
+	  cowRadio.type = 'radio';
+	  cowRadio.name = 'sheep-type';
+	  cowRadio.value = 'cow';
+	  if (civLocked) cowRadio.disabled = true;
+	  
+	  typeDiv.appendChild(sheepRadio);
+	  typeDiv.appendChild(cowSpan);
+	  typeDiv.appendChild(cowRadio);
+	  
+	  const controlDiv = document.createElement('div');
+	  controlDiv.className = 'flex items-center justify-center space-x-1';
+	  controlDiv.innerHTML = `
+		<button id="sheep-plus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">+</button>
+		<span id="sheep-count" class="w-2 text-center">8</span>
+		<button id="sheep-minus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">-</button>
+		<span class="text-gray-600">(<span id="sheep-left">8</span>)</span>
+	  `;
+	  
+	  sheepControls.appendChild(typeDiv);
+	  sheepControls.appendChild(controlDiv);
+	  const progressDiv = document.createElement('div');
+		progressDiv.className = 'mt-1';
+		progressDiv.innerHTML = `
+		  <div class="text-xs text-center mb-1">Current Sheep: <span id="sheep-progress-text">-</span></div>
+		  <div class="progress-bar" style="height: 4px;">
+			<div id="sheep-progress-bar" class="progress-inner" style="width: 0%; background-color: #ef4444;"></div>
+		  </div>
+		`;
+		sheepControls.appendChild(progressDiv);
+	  container.appendChild(sheepControls);
+	}
+
+	function createBerriesControls(container) {
+	  const berriesControls = document.createElement('div');
+	  berriesControls.className = 'bg-white p-1 rounded shadow mt-1 text-xs';
+	  berriesControls.innerHTML = `
+		<div class="text-center mb-1">
+		  <span>🍇 Berries</span>
+		</div>
+		<div class="flex items-center justify-center space-x-1">
+		  <button id="berries-plus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">+</button>
+		  <span id="berries-count" class="w-2 text-center">6</span>
+		  <button id="berries-minus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">-</button>
+		  <span class="text-gray-600">(<span id="berries-left">6</span>)</span>
+		</div>
+		<div class="mt-1">
+		  <div class="progress-bar" style="height: 0.25rem;">
+			<div id="berries-progress" class="progress-inner" style="width: 100%; background-color: #dc2626;"></div>
+		  </div>
+		  <div class="text-center text-xs text-gray-600 mt-1">
+			<span id="berries-food">750</span> / <span id="berries-total">750</span> food
+		  </div>
+		</div>
+	  `;
+	  container.appendChild(berriesControls);
+	}
+
+	function createHuntControls(container) {
+	  const huntControls = document.createElement('div');
+	  huntControls.className = 'bg-white p-1 rounded shadow mt-1 text-xs';
+	  
+	  const typeDiv = document.createElement('div');
+	  typeDiv.className = 'text-center mb-1';
+	  typeDiv.innerHTML = '<span>🦌</span>';
+	  
+	  const deerRadio = document.createElement('input');
+	  deerRadio.type = 'radio';
+	  deerRadio.name = 'hunt-type';
+	  deerRadio.value = 'deer';
+	  deerRadio.checked = true;
+	  if (civLocked) deerRadio.disabled = true;
+	  
+	  const chickenSpan = document.createElement('span');
+	  chickenSpan.textContent = '🐔';
+	  
+	  const chickenRadio = document.createElement('input');
+	  chickenRadio.type = 'radio';
+	  chickenRadio.name = 'hunt-type';
+	  chickenRadio.value = 'chicken';
+	  if (civLocked) chickenRadio.disabled = true;
+	  
+	  typeDiv.appendChild(deerRadio);
+	  typeDiv.appendChild(chickenSpan);
+	  typeDiv.appendChild(chickenRadio);
+	  
+	  const controlDiv = document.createElement('div');
+	  controlDiv.className = 'flex items-center justify-center space-x-1';
+	  controlDiv.innerHTML = `
+		<button id="hunt-plus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">+</button>
+		<span id="hunt-count" class="w-2 text-center">4</span>
+		<button id="hunt-minus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">-</button>
+		<span class="text-gray-600">(<span id="hunt-left">4</span>)</span>
+	  `;
+	  
+	  huntControls.appendChild(typeDiv);
+	  huntControls.appendChild(controlDiv);
+	  const progressDiv = document.createElement('div');
+		progressDiv.className = 'mt-1';
+		progressDiv.innerHTML = `
+		  <div class="text-xs text-center mb-1">Current Hunt: <span id="hunt-progress-text">-</span></div>
+		  <div class="progress-bar" style="height: 4px;">
+			<div id="hunt-progress-bar" class="progress-inner" style="width: 0%; background-color: #ef4444;"></div>
+		  </div>
+		`;
+		huntControls.appendChild(progressDiv);
+	  container.appendChild(huntControls);
+	}
+
+	function createBighuntControls(container) {
+	  const bighuntControls = document.createElement('div');
+	  bighuntControls.className = 'bg-white p-1 rounded shadow mt-1 text-xs';
+	  
+	  const typeDiv = document.createElement('div');
+	  typeDiv.className = 'text-center mb-1';
+	  typeDiv.innerHTML = '<span>🐗</span>';
+	  
+	  const boarRadio = document.createElement('input');
+	  boarRadio.type = 'radio';
+	  boarRadio.name = 'bighunt-type';
+	  boarRadio.value = 'boar';
+	  boarRadio.checked = true;
+	  if (civLocked) boarRadio.disabled = true;
+	  
+	  const rhinoSpan = document.createElement('span');
+	  rhinoSpan.textContent = '🦏';
+	  
+	  const rhinoRadio = document.createElement('input');
+	  rhinoRadio.type = 'radio';
+	  rhinoRadio.name = 'bighunt-type';
+	  rhinoRadio.value = 'rhino';
+	  if (civLocked) rhinoRadio.disabled = true;
+	  
+	  typeDiv.appendChild(boarRadio);
+	  typeDiv.appendChild(rhinoSpan);
+	  typeDiv.appendChild(rhinoRadio);
+	  
+	  const controlDiv = document.createElement('div');
+	  controlDiv.className = 'flex items-center justify-center space-x-1';
+	  controlDiv.innerHTML = `
+		<button id="bighunt-plus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">+</button>
+		<span id="bighunt-count" class="w-2 text-center">2</span>
+		<button id="bighunt-minus" class="px-1 py-0 bg-gray-300 text-black rounded text-xs">-</button>
+		<span class="text-gray-600">(<span id="bighunt-left">2</span>)</span>
+	  `;
+	  
+	  bighuntControls.appendChild(typeDiv);
+	  bighuntControls.appendChild(controlDiv);
+	  const progressDiv = document.createElement('div');
+		progressDiv.className = 'mt-1';
+		progressDiv.innerHTML = `
+		  <div class="text-xs text-center mb-1">Current Boar: <span id="bighunt-progress-text">-</span></div>
+		  <div class="progress-bar" style="height: 4px;">
+			<div id="bighunt-progress-bar" class="progress-inner" style="width: 0%; background-color: #ef4444;"></div>
+		  </div>
+		`;
+		bighuntControls.appendChild(progressDiv);
+	  container.appendChild(bighuntControls);
+	}
+	
+	function updateFiniteResourceCounts() {
+	  const counts = {
+		sheep: parseInt(document.getElementById('sheep-count').textContent),
+		hunt: parseInt(document.getElementById('hunt-count').textContent),
+		bighunt: parseInt(document.getElementById('bighunt-count').textContent),
+		berries: parseInt(document.getElementById('berries-count').textContent)
+	  };
+	  
+	  const types = {
+		sheep: document.querySelector('input[name="sheep-type"]:checked')?.value || 'sheep',
+		hunt: document.querySelector('input[name="hunt-type"]:checked')?.value || 'deer',
+		bighunt: document.querySelector('input[name="bighunt-type"]:checked')?.value || 'boar'
+	  };
+	  
+	  // Reinitialize sheep/cow resources
+	  finiteResources.sheep = [];
+	  // Simulate sheep consumption based on empirical data
+		const sheepConsumed = Math.ceil(calculateTotalFoodGathered() / 80); // Account for decay
+		finiteResources.sheep = finiteResources.sheep.slice(sheepConsumed);
+	  for (let i = 0; i < counts.sheep; i++) {
+		finiteResources.sheep.push({
+		  id: i + 1,
+		  type: types.sheep,
+		  remainingFood: types.sheep === 'sheep' ? 100 : 150, // Cow has more food
+		  workersAssigned: [],
+		  lastUpdateTime: timeSec,
+		  depleted: false
+		});
+	  }
+	  
+	  // Reinitialize hunt resources (deer/chicken)
+	  finiteResources.hunt = [];
+	  for (let i = 0; i < counts.hunt; i++) {
+		finiteResources.hunt.push({
+		  id: i + 1,
+		  type: types.hunt,
+		  remainingFood: types.hunt === 'deer' ? 140 : 65, // Deer vs chicken food amounts
+		  workersAssigned: [],
+		  lastUpdateTime: timeSec,
+		  depleted: false
+		});
+	  }
+	  
+	  // Reinitialize big hunt resources (boar/rhino) with luring states
+		if (!finiteResources.bighunt) finiteResources.bighunt = [];
+		finiteResources.bighunt = [];
+		for (let i = 0; i < counts.bighunt; i++) {
+		  finiteResources.bighunt.push({
+			id: i + 1,
+			type: types.bighunt,
+			remainingFood: types.bighunt === 'boar' ? 340 : 400,
+			hp: 75,
+			maxHp: 75,
+			state: 'wild', // wild, being_lured, being_killed, dead
+			luringVillager: null,
+			lureStartTime: null,
+			killStartTime: null,
+			workersAssigned: [],
+			lastUpdateTime: timeSec,
+			depleted: false
+		  });
+		}
+	  
+	  // Reinitialize berries
+	  finiteResources.berries = [];
+	  for (let i = 0; i < counts.berries; i++) {
+		finiteResources.berries.push({
+		  id: i + 1,
+		  remainingFood: 125,
+		  workersAssigned: [],
+		  lastUpdateTime: timeSec,
+		  depleted: false
+		});
+	  }
+	  
+	  // Update the "Left" counters to show remaining (non-depleted) resources
+	  updateResourceLeftDisplay();
+	  updateBerriesProgress();
+	}
+
+	function updateResourceLeftDisplay() {
+	  const sheepLeft = finiteResources.sheep.filter(r => !r.depleted).length;
+	  const huntLeft = finiteResources.hunt.filter(r => !r.depleted).length;
+	  const bighuntLeft = (finiteResources.bighunt || []).filter(r => !r.depleted).length;
+	  const berriesLeft = finiteResources.berries.filter(r => !r.depleted).length;
+	  
+	  const sheepLeftSpan = document.getElementById('sheep-left');
+	  const huntLeftSpan = document.getElementById('hunt-left');
+	  const bighuntLeftSpan = document.getElementById('bighunt-left');
+	  const berriesLeftSpan = document.getElementById('berries-left');
+	  
+	  if (sheepLeftSpan) sheepLeftSpan.textContent = sheepLeft;
+	  if (huntLeftSpan) huntLeftSpan.textContent = huntLeft;
+	  if (bighuntLeftSpan) bighuntLeftSpan.textContent = bighuntLeft;
+	  if (berriesLeftSpan) berriesLeftSpan.textContent = berriesLeft;
+	}
+	
+	function updateBerriesProgress() {
+	  const berriesProgressBar = document.getElementById('berries-progress');
+	  const berriesFoodSpan = document.getElementById('berries-food');
+	  const berriesTotalSpan = document.getElementById('berries-total');
+	  
+	  if (!berriesProgressBar || !berriesFoodSpan || !berriesTotalSpan) return;
+	  
+	  const totalRemaining = finiteResources.berries.reduce((sum, berry) => sum + berry.remainingFood, 0);
+	  const totalCount = parseInt(document.getElementById('berries-count').textContent);
+	  const totalStarting = totalCount * 125; // 125 food per berry bush
+	  
+	  const percentage = totalStarting > 0 ? (totalRemaining / totalStarting) * 100 : 0;
+	  
+	  berriesProgressBar.style.width = percentage + '%';
+	  berriesFoodSpan.textContent = Math.round(totalRemaining);
+	  berriesTotalSpan.textContent = totalStarting;
 	}
 	
 	function getGatherRate(resourceType) {
@@ -2839,6 +3754,47 @@
 		bonuses: appliedBonuses
 	  };
 	}
+	
+	function updateResourceProgressBars() {
+	  // Update sheep progress
+	  const activeSheep = finiteResources.sheep.find(sheep => 
+		sheep.workersAssigned.length > 0 && !sheep.depleted
+	  );
+	  updateProgressBar('sheep', activeSheep, 100);
+
+	  // Update hunt progress  
+	  const huntType = document.querySelector('input[name="hunt-type"]:checked')?.value || 'deer';
+	  const activeHunt = finiteResources.hunt.find(hunt => 
+		hunt.type === huntType && hunt.workersAssigned.length > 0 && !hunt.depleted
+	  );
+	  const huntMax = huntType === 'deer' ? 140 : 65;
+	  updateProgressBar('hunt', activeHunt, huntMax);
+
+	  // Update bighunt progress
+	  const activeBighunt = finiteResources.bighunt?.find(boar => 
+		boar.workersAssigned.length > 0 && !boar.depleted && boar.state === 'dead'
+	  );
+	  const bighuntType = document.querySelector('input[name="bighunt-type"]:checked')?.value || 'boar';
+	  const bighuntMax = bighuntType === 'boar' ? 340 : 400;
+	  updateProgressBar('bighunt', activeBighunt, bighuntMax);
+	}
+
+	function updateProgressBar(type, resource, maxFood) {
+	  const textSpan = document.getElementById(`${type}-progress-text`);
+	  const progressBar = document.getElementById(`${type}-progress-bar`);
+	  
+	  if (!textSpan || !progressBar) return;
+	  
+	  if (resource) {
+		const remaining = resource.remainingFood;
+		const percentage = (remaining / maxFood) * 100;
+		textSpan.textContent = `${remaining.toFixed(0)}/${maxFood}`;
+		progressBar.style.width = `${percentage}%`;
+	  } else {
+		textSpan.textContent = '-';
+		progressBar.style.width = '0%';
+	  }
+	}
 
 	// RENDER ALL
 	function renderAll() {
@@ -2851,10 +3807,12 @@
 	  renderLog();
 	  renderHist();
 	  renderSimpleHistory();
-	  renderBuildingsList();
 	  renderTechBtns();
 	  renderMilitaryUnitsList();
 	  renderCivilianUnitsList();
+	  updateResourceLeftDisplay();
+	  updateResourceProgressBars();
+	  updateBerriesProgress();
 	}
 
 	// RENDER RESOURCES & POP
@@ -2899,6 +3857,8 @@
 		berries: 'icons/vil icons/villager-berries.png',
 		sheep: 'icons/vil icons/villager-sheep.png',
 		hunt: 'icons/vil icons/villager-hunt.png',
+		bighunt: 'icons/vil icons/villager-bighunt.png',
+		lurebighunt: 'icons/vil icons/villager-hunting.png',
 		fish: 'icons/vil icons/villager-fish.png',
 		farm: 'icons/vil icons/villager-farm.png',
 		repair: 'icons/vil icons/villager-repair.png',
@@ -3335,6 +4295,12 @@
 	  });
 	}
 	
+	function getBuildingDelay(buildingName) {
+	  if (buildingName === 'House') return 2;
+	  if (buildingName === 'TownCenter') return 8;
+	  return 4; // Default for other buildings
+	}
+	
 	function getNextAvailableUpgrade(unitType) {
 	  const unitConfig = UNIT_TYPES[unitType];
 	  if (!unitConfig || !unitConfig.upgrades) return null;
@@ -3346,6 +4312,446 @@
 		}
 	  }
 	  return null; // All upgrades have been researched
+	}
+	
+	// Initialize sheep pools when the game starts
+	function initializeSheepPools(count = 8) {
+	  sheepPools = [];
+	  for (let i = 0; i < count; i++) {
+		sheepPools.push({
+		  id: nextSheepId++,
+		  remainingFood: 100, // Each sheep starts with 100 food
+		  workersAssigned: [], // Track which villagers are working on this sheep
+		  isActive: true // Whether this sheep is still available for gathering
+		});
+	  }
+	}
+
+	// Helper function to find the current active sheep (the one being gathered from)
+	function getCurrentActiveSheep() {
+	  return sheepPools.find(sheep => sheep.isActive && sheep.workersAssigned.length > 0);
+	}
+
+	// Helper function to get the next available sheep when current one is exhausted
+	function getNextAvailableSheep() {
+	  return sheepPools.find(sheep => sheep.isActive && sheep.remainingFood > 0);
+	}
+	
+	// Build Order Configurations
+	// Build Order Configurations
+	const BUILD_ORDERS = {
+	  standard: {
+		  name: "Standard Build Order",
+		  description: "6 to sheep, 2 to wood (2:05)",
+		  timeSec: 125,
+		  villagers: [
+			{
+			  id: 1,
+			  task: 'sheep',
+			  taskStartTime: 31,
+			  gatheringTime: 94,
+			  basket: { food: 2 }
+			},
+			{
+			  id: 2,
+			  task: 'sheep', 
+			  taskStartTime: 31,
+			  gatheringTime: 94,
+			  basket: { food: 2 }
+			},
+			{
+			  id: 3,
+			  task: 'sheep',
+			  taskStartTime: 31,
+			  gatheringTime: 94,
+			  basket: { food: 2 }
+			},
+			{
+			  id: 4,
+			  task: 'sheep',
+			  taskStartTime: 26,
+			  gatheringTime: 99,
+			  basket: { food: 2 }
+			},
+			{
+			  id: 5,
+			  task: 'sheep',
+			  taskStartTime: 51,
+			  gatheringTime: 74,
+			  basket: { food: 2 }
+			},
+			{
+			  id: 6,
+			  task: 'sheep',
+			  taskStartTime: 76,
+			  gatheringTime: 49,
+			  basket: { food: 2 }
+			},
+			{
+			  id: 7,
+			  task: 'building',
+			  taskStartTime: 114,
+			  bldUid: 1,
+			  basket: { food: 0, wood: 0, gold: 0, stone: 0 }
+			},
+			{
+			  id: 8,
+			  task: 'wood',
+			  taskStartTime: 140,
+			  gatheringTime: 0,
+			  basket: { food: 0, wood: 0, gold: 0, stone: 0 }
+			}
+		  ],
+		  builds: [
+			{
+			  uid: 1,
+			  id: 1,
+			  name: 'LumberCamp',
+			  total: 50,
+			  rem: 25
+			}
+		  ],
+		  resources: {
+			food: 46,
+			wood: 50,
+			gold: 100,
+			stone: 200
+		  },
+		  completedBuildings: {
+			House: 2,
+			LumberCamp: 0
+		  },
+		  queuedUnits: [
+			{ type: 'villager', progress: 0 }
+		  ],
+		  sheep: {
+			total: 7, // 1 dead + 6 live
+			currentSheepFood: 20, // Dead sheep remaining food
+			workersOnSheep: 6
+		  }
+		},
+	  
+	  advanced: {
+		name: "Advanced Build Order", 
+		description: "6 to sheep, 3 to wood (2:45)",
+		timeSec: 165,
+		villagers: [
+		  {
+			id: 1,
+			task: 'sheep',
+			taskStartTime: 31,
+			gatheringTime: 134,
+			basket: { food: 9 }
+		  },
+		  {
+			id: 2,
+			task: 'sheep',
+			taskStartTime: 31, 
+			gatheringTime: 134,
+			basket: { food: 1 }
+		  },
+		  {
+			id: 3,
+			task: 'sheep',
+			taskStartTime: 31,
+			gatheringTime: 134,
+			basket: { food: 1 }
+		  },
+		  {
+			id: 4,
+			task: 'sheep',
+			taskStartTime: 26,
+			gatheringTime: 139,
+			basket: { food: 0 }
+		  },
+		  {
+			id: 5,
+			task: 'sheep',
+			taskStartTime: 51,
+			gatheringTime: 114,
+			basket: { food: 0 }
+		  },
+		  {
+			id: 6,
+			task: 'sheep',
+			taskStartTime: 76,
+			gatheringTime: 89,
+			basket: { food: 0 }
+		  },
+		  {
+			id: 7,
+			task: 'wood',
+			taskStartTime: 150,
+			gatheringTime: 15,
+			basket: { wood: 9 }
+		  },
+		  {
+			id: 8,
+			task: 'wood',
+			taskStartTime: 140,
+			gatheringTime: 25,
+			basket: { wood: 5 }
+		  },
+		  {
+			id: 9,
+			task: 'wood',
+			taskStartTime: 165,
+			gatheringTime: 0,
+			basket: { wood: 0 }
+		  }
+		],
+		builds: [], // No buildings in progress
+		resources: {
+		  food: 75,
+		  wood: 50,
+		  gold: 100,
+		  stone: 200
+		},
+		completedBuildings: {
+		  House: 2,
+		  LumberCamp: 1
+		},
+		queuedUnits: [
+		  { type: 'villager', progress: 0.6 }
+		],
+		sheep: {
+		  total: 6, // 5 live + 1 dead
+		  currentSheepFood: 35, // Dead sheep remaining food
+		  workersOnSheep: 6
+		}
+	  }
+	};
+
+	function executeBuildOrder(buildOrderKey) {
+	  const buildOrder = BUILD_ORDERS[buildOrderKey];
+	  if (!buildOrder) {
+		alert('Unknown build order: ' + buildOrderKey);
+		return;
+	  }
+	  
+	  console.log(`Executing ${buildOrder.name}...`);
+	  
+	  init();
+	  timeSec = buildOrder.timeSec;
+	  
+	  // Get civilization bonuses
+	  const civ = CIVILIZATIONS[selectedCiv];
+	  let sheepRate = FOOD_RATE.sheep;
+	  let woodRate = RESOURCE_RATES.wood;
+	  
+	  if (civ.bonuses.shepherdWorkRate) {
+		sheepRate *= civ.bonuses.shepherdWorkRate;
+	  }
+	  
+	  // Create villagers from configuration
+	  vils = buildOrder.villagers.map(vilConfig => {
+		const villager = {
+		  id: vilConfig.id,
+		  task: vilConfig.task,
+		  taskStartTime: vilConfig.taskStartTime,
+		  basket: { food: 0, wood: 0, gold: 0, stone: 0 },
+		  lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
+		  hist: vilConfig.hist || generateVillagerHistory(vilConfig),
+		  selected: false
+		};
+		
+		// Handle building assignment
+		if (vilConfig.bldUid) {
+		  villager.bldUid = vilConfig.bldUid;
+		}
+		
+		// Calculate gathering amounts
+		if (vilConfig.task === 'sheep' && vilConfig.gatheringTime) {
+		  const gathering = calculateResourceGathering(vilConfig.gatheringTime, sheepRate, 10);
+		  villager.lifetimeGathered.food = gathering.total;
+		  villager.basket.food = vilConfig.basket.food === 'calculated' ? gathering.basket : vilConfig.basket.food;
+		}
+		
+		if (vilConfig.task === 'wood' && vilConfig.gatheringTime) {
+		  const gathering = calculateResourceGathering(vilConfig.gatheringTime, woodRate, 10);
+		  villager.lifetimeGathered.wood = gathering.total;
+		  villager.basket.wood = vilConfig.basket.wood || gathering.basket;
+		}
+		
+		// Set basket amounts from config
+		Object.keys(vilConfig.basket).forEach(resource => {
+		  if (vilConfig.basket[resource] !== 'calculated') {
+			villager.basket[resource] = vilConfig.basket[resource];
+		  }
+		});
+		
+		return villager;
+	  });
+	  
+	  // Set up builds
+	  builds = buildOrder.builds.map(buildConfig => ({
+		uid: buildConfig.uid,
+		id: buildConfig.id,
+		name: buildConfig.name,
+		total: buildConfig.total,
+		rem: buildConfig.rem
+	  }));
+	  
+	  // Set up completed buildings
+	  Object.keys(buildOrder.completedBuildings).forEach(buildingName => {
+		nextBuildIds[buildingName] = buildOrder.completedBuildings[buildingName] + 1;
+	  });
+	  
+	  // Calculate pop cap from houses
+	  popCap = 5 + (buildOrder.completedBuildings.House * 5);
+	  
+	  // Set up sheep resources
+	  if (buildOrder.sheep) {
+		finiteResources.sheep = [];
+		
+		if (buildOrder.sheep.currentSheepFood) {
+		  // Build order with dead sheep (both standard and advanced use this now)
+		  finiteResources.sheep.push({
+			id: 1,
+			type: 'sheep',
+			remainingFood: buildOrder.sheep.currentSheepFood,
+			workersAssigned: vils.filter(v => v.task === 'sheep').map(v => v.id),
+			lastUpdateTime: timeSec,
+			depleted: false
+		  });
+		  
+		  // Add remaining live sheep
+		  for (let i = 2; i <= buildOrder.sheep.total; i++) {
+			finiteResources.sheep.push({
+			  id: i,
+			  type: 'sheep',
+			  remainingFood: 100,
+			  workersAssigned: [],
+			  lastUpdateTime: timeSec,
+			  depleted: false
+			});
+		  }
+		} else {
+		  // Fallback for build orders without currentSheepFood
+		  for (let i = 1; i <= buildOrder.sheep.total; i++) {
+			finiteResources.sheep.push({
+			  id: i,
+			  type: 'sheep',
+			  remainingFood: 100,
+			  workersAssigned: i <= buildOrder.sheep.workersOnSheep ? [i] : [],
+			  lastUpdateTime: timeSec,
+			  depleted: false
+			});
+		  }
+		}
+	  }
+	  
+	  // Set up training queue
+	  buildOrder.queuedUnits.forEach(unitConfig => {
+		const unitType = UNIT_TYPES[unitConfig.type];
+		const remaining = unitType.trainTime * (1 - unitConfig.progress);
+		
+		trainingQueue.push({
+		  id: getNextUnitId(unitConfig.type),
+		  type: unitConfig.type,
+		  rem: remaining,
+		  total: unitType.trainTime
+		});
+	  });
+	  
+	  // Set resources directly from configuration
+		res = {
+		  food: buildOrder.resources.food,
+		  wood: buildOrder.resources.wood,
+		  gold: buildOrder.resources.gold,
+		  stone: buildOrder.resources.stone
+		};
+	  
+	  // Calculate total spent and gathered
+	  const villagersSpent = vils.length * 50;
+	  const housesSpent = buildOrder.completedBuildings.House * 25;
+	  const lumberCampSpent = buildOrder.completedBuildings.LumberCamp * 100;
+	  
+	  totalSpent = {
+		food: villagersSpent,
+		wood: housesSpent + lumberCampSpent,
+		gold: 0,
+		stone: 0
+	  };
+	  
+	  // Calculate total gathered
+	  let totalFoodGathered = 0;
+	  let totalWoodGathered = 0;
+	  
+	  vils.forEach(v => {
+		totalFoodGathered += v.lifetimeGathered.food + v.basket.food;
+		totalWoodGathered += v.lifetimeGathered.wood + v.basket.wood;
+	  });
+	  
+	  totalGathered = {
+		food: totalFoodGathered,
+		wood: totalWoodGathered,
+		gold: 0,
+		stone: 0
+	  };
+	  
+	  // Update villager counter
+	  unitIdCounters.villager = Math.max(...vils.map(v => v.id)) + 1;
+	  
+	  civLocked = true;
+	  renderAll();
+	  addLog(`Executed ${buildOrder.name}: ${buildOrder.description}`);
+	}
+
+	function calculateResourceGathering(seconds, rate, capacity) {
+	  const totalGathered = rate * seconds;
+	  const droppedOff = Math.floor(totalGathered / capacity) * capacity;
+	  const inBasket = totalGathered % capacity;
+	  
+	  return { total: totalGathered, dropped: droppedOff, basket: inBasket };
+	}
+
+	function generateVillagerHistory(vilConfig) {
+	  const hist = [];
+	  
+	  if (vilConfig.task === 'building') {
+		hist.push({ t: 0, task: 'building' });
+	  } else if (vilConfig.taskStartTime > 25) {
+		hist.push({ t: vilConfig.taskStartTime - 25, task: 'idle' });
+		hist.push({ t: vilConfig.taskStartTime, task: vilConfig.task });
+	  } else {
+		hist.push({ t: vilConfig.taskStartTime, task: vilConfig.task });
+	  }
+	  
+	  return hist;
+	}
+
+	function calculateSheepGathering(seconds) {
+	  const baseRate = 0.33; // Official sheep gathering rate
+	  const decayAdjustedRate = 0.33; // Empirically adjusted for decay and sharing
+	  const capacity = 10;
+	  
+	  const totalGathered = decayAdjustedRate * seconds;
+	  const droppedOff = Math.floor(totalGathered / capacity) * capacity;
+	  const inBasket = totalGathered % capacity;
+	  
+	  return { total: totalGathered, dropped: droppedOff, basket: inBasket };
+	}
+
+	function calculateTotalFoodGathered() {
+	  let total = 0;
+	  total += calculateSheepGathering(26, 125).total * 2; // Villagers 1-2 (start at 26s)
+	  total += calculateSheepGathering(33, 125).total;     // Villager 3 (starts at 33s, built alone)
+	  total += calculateSheepGathering(26, 125).total;     // Villager 4 (starts at 26s)
+	  total += calculateSheepGathering(51, 125).total;     // Villager 5
+	  total += calculateSheepGathering(76, 125).total;     // Villager 6
+	  return total;
+	}
+
+	function calculateWoodGathering(seconds) {
+	  const rate = FLAT_RATE; // Wood gathering rate
+	  const capacity = CAPACITY.wood; // 10 wood capacity
+	  
+	  const totalGathered = rate * seconds;
+	  const droppedOff = Math.floor(totalGathered / capacity) * capacity;
+	  const inBasket = totalGathered % capacity;
+	  
+	  return { total: totalGathered, dropped: droppedOff, basket: inBasket };
 	}
 	
 	function getUpgradedUnitName(unitType) {
@@ -3658,8 +5064,22 @@
 		hd.appendChild(c);
 	  });
 	}
-
+	
 	// LOG helper
+	function addLogEntry(time, message) {
+	  logEntries.push({
+		time: time,
+		msg: message,
+		food: res.food.toFixed(1),
+		wood: res.wood.toFixed(1), 
+		gold: res.gold.toFixed(1),
+		stone: res.stone.toFixed(1),
+		vills: Math.min(8, Math.floor(time/25) + 3), // Progressive villager count
+		popCount: Math.min(8, Math.floor(time/25) + 3) + 1, // +1 for scout
+		popCap: time >= 25 ? 15 : 5 // Pop cap increases after houses complete
+	  });
+	}
+
 	function addLog(msg) {
 	  const popCount = calculateTotalPopulation();
 
@@ -3687,6 +5107,21 @@
 	}
 
 	// BINDINGS
+	document.getElementById('btn-auto-build-order').addEventListener('click', (e) => {
+	  if (e.ctrlKey) {
+		alert("Oh, a typical 6+2 build. Daring are we?");
+	  }
+	  pushState();
+	  executeBuildOrder('standard');
+	});
+
+	document.getElementById('btn-advanced-build-order').addEventListener('click', (e) => {
+	  if (e.ctrlKey) {
+		alert("Ah, the classic 6+3 transition. A person of culture, I see.");
+	  }
+	  pushState();
+	  executeBuildOrder('advanced');
+	});
 	document.getElementById('btn-train').onclick = handleTrain;
 	document.getElementById('btn-cycle').onclick = () => {
 	  pushState();
