@@ -812,6 +812,17 @@
       TownCenter: 'Castle',
 	  Krepost: 'Castle'
     };
+	
+	function getBuildingDisplayName(buildingKey) {
+	  const displayNames = {
+		'LumberCamp': 'Lumber Camp',
+		'MiningCamp': 'Mining Camp',
+		'ArcheryRange': 'Archery Range',
+		'SiegeWorkshop': 'Siege Workshop',
+		'TownCenter': 'Town Center'
+	  };
+	  return displayNames[buildingKey] || buildingKey;
+	}
 
     // STATE
     let nextBuildUid = 1;
@@ -2662,7 +2673,7 @@
 	  }
 
 	  
-	  const buildingTypes = ['Barracks', 'Stable', 'Archery Range', 'Dock', 'Monastery', 'Siege Workshop', 'Blacksmith', 'Lumber Camp', 'Mining Camp', 'Mill', 'Market', 'University', 'Krepost', 'Castle'];  
+	  const buildingTypes = ['Barracks', 'Stable', 'ArcheryRange', 'Dock', 'Monastery', 'SiegeWorkshop', 'Blacksmith', 'LumberCamp', 'MiningCamp', 'Mill', 'Market', 'University', 'Krepost', 'Castle'];  
 		if  (selectedCiv === 'bulgarians') {
 			const konnikJobs = trainingQueue.filter(j => j.type === 'konnik');
 		if (konnikJobs.length > 0) {
@@ -3007,7 +3018,7 @@
 	  const done = builds.filter(b => b.rem <= 0);
 	  done.forEach(b => {
 		builds = builds.filter(x => x.uid !== b.uid);
-		addLog(`Finished building ${b.name}#${b.id}`);
+		addLog(`Finished building ${getBuildingDisplayName(b.name)}#${b.id}`);
 		addSimple(`build-${b.name.toLowerCase()}`, b.name.toLowerCase(), 1);
 		if (selectedCiv === 'wu' && CIVILIZATIONS.wu.bonuses.buildingFoodBonus) {
 		  const eligibleBuildings = ['Barracks', 'ArcheryRange', 'Stable', 'SiegeWorkshop', 'Castle', 'Dock'];
@@ -4079,7 +4090,7 @@
 	  bd.innerHTML = '';
 	  Object.keys(BUILD_COST).forEach(n => {
 		const b = document.createElement('button');
-		b.textContent = n;
+		b.textContent = getBuildingDisplayName(n);
 
 		const age = BUILDING_AGES[n];
 		let ageClass = '';
@@ -4147,7 +4158,7 @@
 			rem: buildTime
 		  });
 
-		  addLog(`Started ${n}#${id}`);
+		  addLog(`Started ${getBuildingDisplayName(n)}#${id}`);
 		  renderAll();
 		};
 		bd.appendChild(b);
@@ -4914,7 +4925,7 @@
 			v.bldUid = b.uid;
 			recordHistory(v, taskStr);
 
-			const msg = `Vil #${i}→Build ${b.name}#${b.id}`;
+			const msg = `Vil #${i}→Build ${getBuildingDisplayName(b.name)}#${b.id}`;
 			const lastLog = logEntries[logEntries.length - 1];
 			if (!(lastLog && lastLog.time === timeSec && lastLog.msg === msg)) {
 			  addLog(msg);
@@ -4931,7 +4942,7 @@
 
 		z.innerHTML += `
 		  <div class="flex justify-between text-sm">
-			<span>${b.name}#${b.id}</span>
+			<span>${getBuildingDisplayName(b.name)}#${b.id}</span>
 			<span>${pct2}% / ${b.rem.toFixed(0)}s</span>
 		  </div>
 		  <div class="workers">${workers}</div>
