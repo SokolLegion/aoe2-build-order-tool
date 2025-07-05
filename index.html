@@ -641,7 +641,7 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.2.0 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
+    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.2.2 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
   </div>
 
   <script>
@@ -663,9 +663,9 @@
     };
 	
 	const RESOURCE_RATES = {
-	  wood: 0.39,   // Lumberjack rate from official data
-	  gold: 0.38,   // Gold Miner rate from official data  
-	  stone: 0.36   // Stone Miner rate from official data
+	  wood: 0.39,
+	  gold: 0.38,
+	  stone: 0.36
 	};
 	
 	const DECAY_RATES = {
@@ -766,7 +766,8 @@
       Monastery: { wood: 175 },
       SiegeWorkshop: { wood: 200 },
       University: { wood: 200 },
-      TownCenter: { wood: 275, stone: 100 }
+      TownCenter: { wood: 275, stone: 100 },
+	  Krepost: { stone: 350 }
     };
 
     const BUILD_TIME = {
@@ -785,6 +786,7 @@
       SiegeWorkshop: 40,
       University: 60,
       TownCenter: 200,
+	  Krepost: 150,
       Tower: 200
     };
 
@@ -807,7 +809,8 @@
       Monastery: 'Castle',
       SiegeWorkshop: 'Castle',
       University: 'Castle',
-      TownCenter: 'Castle'
+      TownCenter: 'Castle',
+	  Krepost: 'Castle'
     };
 
     // STATE
@@ -829,7 +832,6 @@
 	let nextTransportshipId = 1;
 	let nextSheepId = 1;
     let civLocked = false;
-	initializeFiniteResources();
     let researchedTechs = {
       // Dark Age
       loom: false,
@@ -900,6 +902,12 @@
 	let cavalryarcherActive = [];
 	let heiguangcavalryActive = [];
 	let scorpionActive = [];
+	let longbowmanActive = [];
+	let konnikActive = [];
+	let throwingaxemanActive = [];
+	let mangudaiActive = [];
+	let plumedarcherActive = [];
+	let firearcherActive = [];
     let nextMilId = 1;
     let nextVilId = 4;
     let nextScoutId = 1;
@@ -936,8 +944,7 @@
       Object.keys(unitIdCounters).forEach(key => {
         unitIdCounters[key] = 1;
       });
-      // Special cases
-      unitIdCounters.villager = 4; // Start at 4 since we begin with 3 vils
+      unitIdCounters.villager = 4;
     }
 	
 	// Dynamic unit array registry
@@ -969,6 +976,12 @@
 	registerUnitArray('cavalryarcher', cavalryarcherActive);
 	registerUnitArray('heiguangcavalry', heiguangcavalryActive);
 	registerUnitArray('scorpion', scorpionActive);
+	registerUnitArray('longbowman', longbowmanActive);
+	registerUnitArray('konnik', konnikActive);
+	registerUnitArray('throwingaxeman', throwingaxemanActive);
+	registerUnitArray('mangudai', mangudaiActive);
+	registerUnitArray('plumedarcher', plumedarcherActive);
+	registerUnitArray('firearcher', firearcherActive);
 
     const CIVILIZATIONS = {
       generic: { name: 'Generic', bonuses: {} },
@@ -1007,7 +1020,8 @@
         name: 'Maya',
         bonuses: {
           extraStartVillager: true,
-          archeryCostReduction: { feudal: 0.1, castle: 0.2, imperial: 0.3 }
+          archeryCostReduction: { feudal: 0.1, castle: 0.2, imperial: 0.3 },
+          longerLastingResources: 1.15
         }
       },
       wu: {
@@ -1022,7 +1036,7 @@
 	function canTrainUnit(unitType) {
 	  const unitConfig = UNIT_TYPES[unitType];
 	  if (!unitConfig || !unitConfig.civilizations) {
-		return true; // No restrictions
+		return true;
 	  }
 	  return unitConfig.civilizations.includes(selectedCiv);
 	}
@@ -1108,8 +1122,8 @@
 	  },
 	  
 	  jianswordsman: {
-		  trainTime: 28,
-		  cost: { food: 60, gold: 40 },
+		  trainTime: 27,
+		  cost: { food: 45, gold: 50 },
 		  building: 'Barracks',
 		  age: 'Castle',
 		  civilizations: ['wu'],
@@ -1203,11 +1217,66 @@
 		  age: 'Castle',
 		  // upgrades: ['heavyscorpion'],
 		  parallelSlots: () => (nextBuildIds['SiegeWorkshop'] - 1) - builds.filter(b => b.name === 'SiegeWorkshop').length
-		}
+		},
+		
+		// UNIQUE UNITS
+		  longbowman: {
+			trainTime: 18,
+			cost: { wood: 35, gold: 40 },
+			building: 'Castle',
+			age: 'Castle',
+			civilizations: ['britons'],
+			parallelSlots: () => (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length
+		  },
+
+		  konnik: {
+			trainTime: 16,
+			cost: { food: 60, gold: 70 },
+			building: 'Castle',
+			age: 'Castle',
+			civilizations: ['bulgarians'],
+			parallelSlots: () => (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length
+		  },
+
+		  throwingaxeman: {
+			trainTime: 21,
+			cost: { food: 55, gold: 25 },
+			building: 'Castle',
+			age: 'Castle',
+			civilizations: ['franks'],
+			parallelSlots: () => (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length
+		  },
+
+		  mangudai: {
+			trainTime: 26,
+			cost: { wood: 55, gold: 65 },
+			building: 'Castle',
+			age: 'Castle',
+			civilizations: ['mongols'],
+			parallelSlots: () => (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length
+		  },
+
+		  plumedarcher: {
+			trainTime: 16,
+			cost: { wood: 55, gold: 55 },
+			building: 'Castle',
+			age: 'Castle',
+			civilizations: ['maya'],
+			parallelSlots: () => (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length
+		  },
+
+		  firearcher: {
+			trainTime: 17,
+			cost: { wood: 45, gold: 45 },
+			building: 'Castle',
+			age: 'Castle',
+			civilizations: ['wu'],
+			parallelSlots: () => (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length
+		  },
 	};
 
 	const TECH_TYPES = {
-	  // Ages
+	  // Age ups
 	  feudalage: {
 		name: 'Feudal Age',
 		cost: { food: 500 },
@@ -1391,7 +1460,7 @@
 		time: 40,
 		building: 'Mill',
 		age: 'Feudal',
-		civilizations: ['khitans'], // Only Khitans can research this
+		civilizations: ['khitans'],
 		requirement: () => currentAge !== 'Dark'
 	  },
 
@@ -1613,7 +1682,7 @@
 		time: 40,
 		building: 'Mill',
 		age: 'Castle',
-		civilizations: ['khitans'], // Only Khitans can research this
+		civilizations: ['khitans'],
 		requirement: () => currentAge === 'Castle'
 	  },
 
@@ -1679,7 +1748,7 @@
 		  time: 45,
 		  building: 'Barracks',
 		  age: 'Castle',
-		  requirement: () => currentAge === 'Castle' && researchedUpgrades.maa  // <-- This is key!
+		  requirement: () => currentAge === 'Castle' && researchedUpgrades.maa 
 		},
 
 	  // Imperial Age
@@ -1689,7 +1758,7 @@
 		time: 40,
 		building: 'Mill',
 		age: 'Imperial',
-		civilizations: ['khitans'], // Only Khitans can research this
+		civilizations: ['khitans'],
 		requirement: () => currentAge === 'Imperial'
 	  }
 	};
@@ -1821,59 +1890,66 @@
     const buildOrderList = document.getElementById('build-order-list');
 
     // Scout icon
-    const scoutImg = document.createElement('img');
-    scoutImg.id = 'scout-icon';
-    scoutImg.src = 'icons/military-icons/scout-icon.png';
-    scoutImg.title = 'Scout (uses 1 pop slot)';
-    scoutImg.style.opacity = '1';
+    const scoutImg = document.createElement('img');  
+	scoutImg.id = 'scout-icon';  
+	if (['maya', 'inca', 'aztecs'].includes(selectedCiv)) {
+	  scoutImg.src = 'icons/military-icons/eaglescout-icon.png';
+	} else {
+	  scoutImg.src = 'icons/military-icons/scout-icon.png';
+	}
+	scoutImg.title = 'Scout (uses 1 pop slot)';  
+	scoutImg.style.opacity = '1';
 
-    // Necro-detection
 	let scoutClickCount = 0;
 	let scoutClickTimer = null;
 
 	scoutImg.addEventListener('click', () => {
 	  pushState();
-	  
-	  // Necromancer detection
 	  scoutClickCount++;
 	  if (scoutClickTimer) {
 		clearTimeout(scoutClickTimer);
 	  }
 	  scoutClickTimer = setTimeout(() => {
 		scoutClickCount = 0;
-	  }, 15000); // Reset counter after 15 seconds
+	  }, 15000); 
 	  
-	  if (scoutClickCount >= 6) {
-		alert("Are you a Necromancer? Let Richard's body rest in peace!");
-		scoutClickCount = 0; // Reset counter after showing alert
-		return;
+	  if (scoutClickCount === 6) {
+		if (selectedCiv === 'aztecs') {  
+			alert("Are you a Shaman? Let Montezuma's body rest in peace!");
+		}
+		else if (selectedCiv === 'inca') {
+			alert("Are you a Shaman? Let Viracocha's body rest in peace!");
+		}
+		else if (selectedCiv === 'maya') {
+			alert("Are you a Shaman? Let Pacal's body rest in peace!");
+		}
+		else {
+			alert("Are you a Necromancer? Let Richard's body rest in peace!");
+		}
+		scoutClickCount = 9;
+		// return;
 	  }
 	  
 	  scoutOn = !scoutOn;
 	  scoutImg.style.opacity = scoutOn ? '1' : '0.55';
 	  
-	  // Handle scout spawning/despawning
 	  if (scoutOn) {
-		// Spawn scout if none exists
 		if (scoutActive.length === 0) {
 		  scoutActive.push(getNextUnitId('scout'));
 		}
 	  } else {
-		// Remove all scouts
 		scoutActive = [];
 	  }
 	  
 	  renderAll();
 	});
 
-    // Selection rectangle
     const selRect = document.createElement('div');
     selRect.className = 'selection-rectangle';
     vd.appendChild(selRect);
     let isSelecting = false;
     let startX, startY, containerRect;
 
-    // INITIALIZE
     function init() {
       civLocked = false;
 	  loomResearched = false;
@@ -1908,6 +1984,12 @@
 		cavalryarcherActive = [];
 		heiguangcavalryActive = [];
 		scorpionActive = [];
+		longbowmanActive = [];
+		konnikActive = [];
+		throwingaxemanActive = [];
+		mangudaiActive = [];
+		plumedarcherActive = [];
+		firearcherActive = [];
       resetUnitIdCounters();
       scoutClickCount = 0;
 	  if (scoutClickTimer) {
@@ -1915,7 +1997,7 @@
 		scoutClickTimer = null;
 	  }
       if (selectedCiv === 'maya') {
-        unitIdCounters.villager = 5; // Maya starts with 4 villagers, next will be #5
+        unitIdCounters.villager = 5;
       }
       
       popCap = 5;
@@ -1926,7 +2008,7 @@
 		  {
 			id: 1,
 			task: 'idle',
-			taskStartTime: 0, // ADD THIS LINE
+			taskStartTime: 0, 
 			basket: { food: 0, wood: 0, gold: 0, stone: 0 },
 			lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
 			hist: [{ t: 0, task: 'idle' }],
@@ -1935,7 +2017,7 @@
 		  {
 			id: 2,
 			task: 'idle',
-			taskStartTime: 0, // ADD THIS LINE
+			taskStartTime: 0, 
 			basket: { food: 0, wood: 0, gold: 0, stone: 0 },
 			lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
 			hist: [{ t: 0, task: 'idle' }],
@@ -1944,14 +2026,13 @@
 		  {
 			id: 3,
 			task: 'idle',
-			taskStartTime: 0, // ADD THIS LINE
+			taskStartTime: 0, 
 			basket: { food: 0, wood: 0, gold: 0, stone: 0 },
 			lifetimeGathered: { food: 0, wood: 0, gold: 0, stone: 0 },
 			hist: [{ t: 0, task: 'idle' }],
 			selected: false
 		  }
       ];
-      // For Maya civilization
       if (selectedCiv === 'maya') {
         res.food = 150;
         vils.push({
@@ -1965,15 +2046,12 @@
         nextVilId = 5;
         popCap = 5;
       }
-	  // Initialize starting military units based on civilization
-		if (selectedCiv === 'maya' || selectedCiv === 'inca' || selectedCiv === 'aztecs') {
-		  eaglescoutActive.push(getNextUnitId('eaglescout'));
-		} else if (selectedCiv === 'gurjaras') {
-		  // Camel Scout - DOESN'T EXIST YET!
+		if (selectedCiv === 'maya' || selectedCiv === 'inca' || selectedCiv === 'aztecs') {  
 		  scoutActive.push(getNextUnitId('scout'));
-		} else {
-		  // Regular scout
-		  scoutActive.push(getNextUnitId('scout'));
+		} else if (selectedCiv === 'gurjaras') {  
+		  scoutActive.push(getNextUnitId('scout'));  
+		} else {  
+		  scoutActive.push(getNextUnitId('scout'));  
 		}
 
       builds = [];
@@ -1990,7 +2068,6 @@
         nextBuildIds[name] = 1;
       });
 
-      // DRAG-SELECT handlers
       vd.addEventListener('mousedown', e => {
         if (e.button !== 0 || e.target !== vd) return;
         if (!e.shiftKey) vils.forEach(v => v.selected = false);
@@ -2037,7 +2114,7 @@
         pushState();
         renderAll();
       });
-
+	  initializeFiniteResources();
       renderZones();
       renderAll();
       renderSimpleHistory();
@@ -2047,12 +2124,9 @@
 	  const list = document.getElementById('military-units-list');
 	  list.innerHTML = '';
 
-	  // Generate units list dynamically from UNIT_TYPES
 	  Object.entries(UNIT_TYPES).forEach(([key, config]) => {
-		// Skip civilian units
 		if (key === 'villager' || key === 'fishingship' || key === 'transportship') return;
 		
-		// Check if unit should be visible based on current age
 		let shouldShow = false;
 		if (config.age === 'Dark') shouldShow = true;
 		if (config.age === 'Feudal' && currentAge !== 'Dark') shouldShow = true;
@@ -2060,17 +2134,21 @@
 
 		if (!shouldShow) return;
 		
-		// Check civilization restrictions
 		if (!canTrainUnit(key)) return;
 		
-		// Check if required building exists
-		const hasBuilding = (nextBuildIds[config.building] - 1) - builds.filter(b => b.name === config.building).length > 0;
+		let hasBuilding = (nextBuildIds[config.building] - 1) - builds.filter(b => b.name === config.building).length > 0;
+
+		if (key === 'konnik' && selectedCiv === 'bulgarians') {
+		  const hasCastle = (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length > 0;
+		  const hasKrepost = (nextBuildIds['Krepost'] - 1) - builds.filter(b => b.name === 'Krepost').length > 0;
+		  hasBuilding = hasCastle || hasKrepost;
+		}
+
 		if (!hasBuilding) return;
 
-		// Create a unit object that matches the expected structure
 		const unit = {
 		  key: key,
-		  name: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize first letter
+		  name: key.charAt(0).toUpperCase() + key.slice(1),
 		  age: config.age,
 		  building: config.building
 		};
@@ -2078,11 +2156,10 @@
 		const li = document.createElement('li');
 		li.className = 'flex items-center justify-between';
 
-        // Determine display name (check for upgrades)
+        
 		let displayName = unit.name;
 		const unitConfig = UNIT_TYPES[unit.key];
 		if (unitConfig && unitConfig.upgrades) {
-		  // Find the highest researched upgrade
 		  for (let i = unitConfig.upgrades.length - 1; i >= 0; i--) {
 			if (researchedUpgrades[unitConfig.upgrades[i]]) {
 			  const upgradeNames = {
@@ -2101,10 +2178,8 @@
 		  }
 		}
 
-		// Determine icon based on upgrade status
 		let iconPath = `icons/military-icons/${unit.key}-icon.png`;
 		if (unitConfig && unitConfig.upgrades) {
-		  // Find the highest researched upgrade and use its icon
 		  for (let i = unitConfig.upgrades.length - 1; i >= 0; i--) {
 			if (researchedUpgrades[unitConfig.upgrades[i]]) {
 			  const upgradeicons = {
@@ -2149,7 +2224,6 @@
         list.appendChild(li);
       });
 
-      // Re-bind all the click events
       bindMilitaryUnitEvents();
     }
 	
@@ -2157,7 +2231,6 @@
 	  const list = document.getElementById('civilian-units-list');
 	  list.innerHTML = '';
 
-	  // Villager - always available
 	  const villagerLi = document.createElement('li');
 	  villagerLi.className = 'flex items-center justify-between';
 	  villagerLi.innerHTML = `
@@ -2169,7 +2242,6 @@
 	  `;
 	  list.appendChild(villagerLi);
 
-	  // Fishing Ship - only if docks exist
 	  const completedDocks = (nextBuildIds['Dock'] - 1) - builds.filter(b => b.name === 'Dock').length;
 	  if (completedDocks > 0) {
 		const fishingLi = document.createElement('li');
@@ -2183,7 +2255,6 @@
 		`;
 		list.appendChild(fishingLi);
 
-		// Transport Ship - also only if docks exist
 		const transportLi = document.createElement('li');
 		transportLi.className = 'flex items-center justify-between';
 		transportLi.innerHTML = `
@@ -2196,7 +2267,6 @@
 		list.appendChild(transportLi);
 	  }
 
-	  // Re-bind click events
 	  const trainBtn = document.getElementById('btn-train-civ');
 	  if (trainBtn) {
 		trainBtn.onclick = handleTrain;
@@ -2220,8 +2290,7 @@
 	}
 
     function bindMilitaryUnitEvents() {
-      // Bind unit training buttons
-      const unitButtons = ['militia', 'scout', 'archer', 'skirmisher', 'spearman', 'eaglescout', 'camel', 'steppelancer', 'knight', 'monk', 'mangonel', 'galley', 'firegalley', 'jianswordsman', 'cavalryarcher', 'heiguangcavalry', 'scorpion'];
+      const unitButtons = ['militia', 'scout', 'archer', 'skirmisher', 'spearman', 'eaglescout', 'camel', 'steppelancer', 'knight', 'monk', 'mangonel', 'galley', 'firegalley', 'jianswordsman', 'cavalryarcher', 'heiguangcavalry', 'scorpion', 'longbowman', 'konnik', 'throwingaxeman', 'mangudai', 'plumedarcher', 'firearcher'];
       unitButtons.forEach(unit => {
         const btn = document.getElementById(`btn-${unit}`);
         if (btn) {
@@ -2231,8 +2300,7 @@
           };
         }
 
-        // Bind upgrade buttons - check all possible upgrades
-		['maa', 'longswordsman', 'eaglewarrior', 'eliteskirmisher', 'crossbowman', 'pikeman', 'lightcavalry', 'wargalley'].forEach(upgradeType => {
+        ['maa', 'longswordsman', 'eaglewarrior', 'eliteskirmisher', 'crossbowman', 'pikeman', 'lightcavalry', 'wargalley'].forEach(upgradeType => {
 		  const upgradeBtn = document.getElementById(`btn-upgrade-${upgradeType}`);
 		  if (upgradeBtn) {
 			upgradeBtn.onclick = () => {
@@ -2273,7 +2341,6 @@
 	  let total = scoutOn ? 1 : 0;
 	  total += vils.length;
 	  
-	  // Dynamically count all military units
 	  Object.keys(UNIT_TYPES).forEach(unitType => {
 		if (unitType === 'villager') return;
 		
@@ -2283,7 +2350,6 @@
 		}
 	  });
 	  
-	  // Add units in training queue (excluding techs)
 	  total += trainingQueue.filter(q => q.type !== 'tech').length;
 	  
 	  return total;
@@ -2308,7 +2374,6 @@
 	  return arrays[unitType];
 	}
 
-    // TRAIN
     function handleTrain() {
       pushState();
       queueUnit('villager');
@@ -2322,7 +2387,6 @@
 			return;
 		}
 
-	  // Check age requirements dynamically
 	  if (cfg.age === 'Feudal' && currentAge === 'Dark') {
 		alert('Requires Feudal Age');
 		return;
@@ -2332,23 +2396,26 @@
 		return;
 	  }
 
-	  // Check building requirements dynamically
 	  if (cfg.building !== 'TownCenter') {
-		const hasBuilding = (nextBuildIds[cfg.building] - 1) - builds.filter(b => b.name === cfg.building).length > 0;
+		let hasBuilding = (nextBuildIds[cfg.building] - 1) - builds.filter(b => b.name === cfg.building).length > 0;
+		
+		if (type === 'konnik' && selectedCiv === 'bulgarians') {
+		  const hasKrepost = (nextBuildIds['Krepost'] - 1) - builds.filter(b => b.name === 'Krepost').length > 0;
+		  hasBuilding = hasBuilding || hasKrepost;
+		}
+		
 		if (!hasBuilding) {
-		  alert(`Requires ${cfg.building}`);
+		  alert(`Requires ${cfg.building}${type === 'konnik' && selectedCiv === 'bulgarians' ? ' or Krepost' : ''}`);
 		  return;
 		}
 	  }
 
-	  // Dynamic population count
 	  const usedSlots = calculateTotalPopulation();
 	  if (usedSlots >= popCap) {
 		alert('Population cap reached');
 		return;
 	  }
 
-	  // cost check
 	  for (let r in cfg.cost) {
 		if (res[r] < cfg.cost[r]) {
 		  alert(`Not enough ${r}`);
@@ -2356,13 +2423,11 @@
 		}
 	  }
 
-	  // deduct cost
 	  for (let r in cfg.cost) {
 		res[r] -= cfg.cost[r];
 		totalSpent[r] += cfg.cost[r];
 	  }
 
-	  // Handle variable training times
 	  let actualTrainTime = cfg.trainTime;
 	  if (type === 'eaglescout' && currentAge === 'Feudal') {
 		actualTrainTime = 60;
@@ -2382,8 +2447,6 @@
 
     function queueTech(techId) {
       const tech = TECH_TYPES[techId];
-
-      // Check building requirement
       if (tech.building && tech.building !== 'TownCenter') {
         const requiredBuilding = tech.building;
         const hasBuilding = (nextBuildIds[requiredBuilding] - 1) - builds.filter(b => b.name === requiredBuilding).length > 0;
@@ -2393,7 +2456,6 @@
         }
       }
 
-      // Check if already researched
       if (researchedTechs[techId] || researchedUpgrades[techId]) {
         alert('Already researched');
         return;
@@ -2404,7 +2466,6 @@
         return;
       }
 
-      // Check cost and deduct
       for (let r in tech.cost) {
         if (res[r] < tech.cost[r]) {
           alert(`Not enough ${r}`);
@@ -2414,7 +2475,6 @@
         totalSpent[r] += tech.cost[r];
       }
 
-      // Add to training queue with building designation
       trainingQueue.push({
         id: `tech-${techId}`,
         type: 'tech',
@@ -2431,7 +2491,6 @@
 	function queueTechWithBuilding(techId) {
 	  const tech = TECH_TYPES[techId];
 	  
-	  // Check building requirement
 	  if (tech.building && tech.building !== 'TownCenter') {
 		const requiredBuilding = tech.building;
 		const hasBuilding = (nextBuildIds[requiredBuilding] - 1) - builds.filter(b => b.name === requiredBuilding).length > 0;
@@ -2441,13 +2500,11 @@
 		}
 	  }
 	  
-	  // Check if already researched
 	  if (researchedTechs[techId] || researchedUpgrades[techId]) {
 		alert('Already researched');
 		return;
 	  }
 	  
-	  // Check cost and deduct
 	  for (let r in tech.cost) {
 		if (res[r] < tech.cost[r]) {
 		  alert(`Not enough ${r}`);
@@ -2457,7 +2514,6 @@
 		totalSpent[r] += tech.cost[r];
 	  }
 	  
-	  // Add to training queue with building designation
 	  trainingQueue.push({
 		id: `tech-${techId}`,
 		type: 'tech',
@@ -2496,15 +2552,13 @@
 	  console.log('trainingQueue:', JSON.stringify(trainingQueue));
 	  timeSec += dt;
 	  
-	  // Take snapshot of sheep food for this cycle
-		const sheepSnapshot = {};
+	  	const sheepSnapshot = {};
 		if (finiteResources.sheep) {
 		  finiteResources.sheep.forEach(sheep => {
 			sheepSnapshot[sheep.id] = sheep.remainingFood;
 		  });
 		}
 	  
-	  // Handle auto-train - queue next villager when current one starts training
 	  if (autoTrain) {
 		const villagersInQueue = trainingQueue.filter(q => q.type === 'villager').length;
 		const canAfford = res.food >= 50;
@@ -2512,7 +2566,6 @@
 		  knightActive.length + monkActive.length + mangonelActive.length + galleyActive.length + firegalleyActive.length + 
 		  trainingQueue.filter(q => q.type !== 'tech').length < popCap;
 		
-		// Queue a villager if we have less than 2 in queue (one training + one waiting)
 		if (villagersInQueue < 2 && canAfford && hasPopSpace) {
 		  res.food -= 50;
 		  totalSpent.food += 50;
@@ -2527,7 +2580,6 @@
 		}
 	  }
 	  
-	  // Process TC queue in TRUE FIFO order (villagers and techs mixed)
 	  const tcQueue = trainingQueue.filter(j =>
 		j.type === 'villager' || (j.type === 'tech' && j.building === 'TownCenter')
 	  );
@@ -2583,31 +2635,57 @@
 		}
 	  }
 
-	  // Process all buildings (except TC which is handled above)
-	  const buildingTypes = ['Barracks', 'Stable', 'ArcheryRange', 'Dock', 'Monastery', 'SiegeWorkshop', 'Blacksmith', 'LumberCamp', 'MiningCamp', 'Mill', 'Market', 'University'];
+	  
+	  if (selectedCiv === 'bulgarians') {
+		const konnikJobs = trainingQueue.filter(j => j.type === 'konnik');
+		if (konnikJobs.length > 0) {
+		  const castleSlots = (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length;
+		  const krepostSlots = (nextBuildIds['Krepost'] - 1) - builds.filter(b => b.name === 'Krepost').length;
+		  const totalKonnikSlots = castleSlots + krepostSlots;
+		  
+		  if (totalKonnikSlots > 0) {
+			const activeKonnikJobs = konnikJobs.slice(0, totalKonnikSlots);
+			let timeLeft = dt;
+
+			while (timeLeft > 0 && activeKonnikJobs.length > 0) {
+			  const nextFinish = Math.min(...activeKonnikJobs.map(j => j.rem));
+			  const tick = Math.min(timeLeft, nextFinish);
+			  
+			  activeKonnikJobs.forEach(j => j.rem -= tick);
+			  timeLeft -= tick;
+			  
+			  const completed = activeKonnikJobs.filter(j => j.rem <= 0);
+			  completed.forEach(j => {
+				trainingQueue = trainingQueue.filter(x => x !== j);
+				konnikActive.push(j.id);
+				addLog(`Konnik #${j.id} spawned`);
+			  });
+			  
+			  completed.forEach(completedJob => {
+				const index = activeKonnikJobs.indexOf(completedJob);
+				if (index > -1) activeKonnikJobs.splice(index, 1);
+			  });
+			}
+		  }
+		}
+	  }
 
 	  buildingTypes.forEach(buildingType => {
 		const availableSlots = (nextBuildIds[buildingType] - 1) - builds.filter(b => b.name === buildingType).length;
 		if (availableSlots <= 0) return;
 
-		// Get all jobs (units + techs) for this building, in queue order
 		const buildingJobs = trainingQueue.filter(j => {
 		  if (j.type === 'tech') return j.building === buildingType;
 		  const unitConfig = UNIT_TYPES[j.type];
-		  return unitConfig && unitConfig.building === buildingType;
+		  if (!unitConfig) return false;
+		  if (j.type === 'konnik' && selectedCiv === 'bulgarians') return false;
+		  if (unitConfig.building === buildingType) return true;
+		  if (j.type === 'konnik' && selectedCiv === 'bulgarians' && buildingType === 'Krepost') return true;
+		  return false;
 		});
-		
-		// ADD THIS DEBUG BLOCK HERE:
-		if (buildingType === 'Dock' && buildingJobs.length > 0) {
-		  console.log(`=== DOCK PROCESSING ===`);
-		  buildingJobs.forEach(j => {
-			console.log(`Job ${j.id} type ${j.type}: isUnit=${j.type !== 'tech'}, building=${j.building || (UNIT_TYPES[j.type] && UNIT_TYPES[j.type].building)}`);
-		  });
-		}
 
 		if (buildingJobs.length === 0) return;
 
-		// Process up to availableSlots jobs simultaneously
 		const activeJobs = buildingJobs.slice(0, availableSlots);
 		let timeLeft = dt;
 
@@ -2623,7 +2701,6 @@
 			trainingQueue = trainingQueue.filter(x => x !== j);
 			
 			if (j.type === 'tech') {
-			  // Handle completed tech
 			  const tech = TECH_TYPES[j.techId];
 			  if (researchedUpgrades.hasOwnProperty(j.techId)) {
 				researchedUpgrades[j.techId] = true;
@@ -2668,13 +2745,18 @@
 				spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
 				eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
 				firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
-				skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',      
-				camel: 'Camel',      
+				skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',        
+				camel: 'Camel',        
 				steppelancer: 'Steppe Lancer',
-				jianswordsman: { food: 60, gold: 40 },
-				cavalryarcher: { wood: 40, gold: 60 },
-				heiguangcavalry: { food: 60, gold: 75 },
-				scorpion: { wood: 75, gold: 75 }
+				longbowman: 'Longbowman',
+				throwingaxeman: 'Throwing Axeman',
+				mangudai: 'Mangudai',
+				plumedarcher: 'Calf Archer',
+				firearcher: 'Fire Archer',
+				jianswordsman: 'Jian Swordsman',
+				cavalryarcher: 'Cavalry Archer',
+				heiguangcavalry: 'Hei Guang Cavalry',
+				scorpion: 'Scorpion'
 			  };
 			  
 			  const displayName = unitNames[j.type] || j.type;
@@ -2682,7 +2764,6 @@
 			}
 		  });
 		  
-		  // Remove completed jobs from activeJobs
 		  completed.forEach(completedJob => {
 			const index = activeJobs.indexOf(completedJob);
 			if (index > -1) activeJobs.splice(index, 1);
@@ -2690,12 +2771,10 @@
 		}
 	  });
 
-	  // Handle boar luring system - process state transitions during time advancement    
 	  let remainingTime = dt;    
-	  let currentTime = timeSec - dt; // Start from beginning of this cycle
+	  let currentTime = timeSec - dt; 
 
 	  while (remainingTime > 0) {    
-		// Find the next boar state transition that should happen    
 		let nextTransitionTime = Infinity;    
 		let nextTransitionBoar = null;    
 		let nextTransitionType = null;
@@ -2724,27 +2803,24 @@
 		  }    
 		});
 
-		// Process time up to next transition (or end of cycle)    
 		const timeToProcess = Math.min(remainingTime, nextTransitionTime - currentTime);    
 		if (timeToProcess > 0) {    
 		  currentTime += timeToProcess;    
 		  remainingTime -= timeToProcess;    
 		}
 
-		// Handle the transition if we reached one    
 		if (nextTransitionBoar && currentTime >= nextTransitionTime) {    
 		  const originalTimeSec = timeSec;    
-		  timeSec = nextTransitionTime; // Set to exact transition time for logging    
+		  timeSec = nextTransitionTime; 
 		  
 		  if (nextTransitionType === 'lure_complete') {    
-			// Luring completed, start kill phase    
 			nextTransitionBoar.state = 'being_killed';    
 			nextTransitionBoar.killStartTime = nextTransitionTime;    
-			nextTransitionBoar.hp -= 3; // Lurer inflicts 3 damage    
+			nextTransitionBoar.hp -= 3; 
 			  
 			const villager = vils.find(v => v.id === nextTransitionBoar.luringVillager);    
 			if (villager) {    
-			  villager.task = 'idle'; // Temporarily idle during kill phase    
+			  villager.task = 'idle'; 
 			  recordHistory(villager, 'killing boar');    
 			}    
 			  
@@ -2752,17 +2828,15 @@
 		  }    
 		  
 		  else if (nextTransitionType === 'kill_complete') {    
-			// Kill completed    
 			nextTransitionBoar.state = 'dead';    
 			nextTransitionBoar.hp = 0;    
-			nextTransitionBoar.lastUpdateTime = nextTransitionTime; // Important: Set decay timer  
+			nextTransitionBoar.lastUpdateTime = nextTransitionTime; 
 			  
-			// Automatically assign luring villager to gather          
 			const villager = vils.find(v => v.id === nextTransitionBoar.luringVillager);          
 			if (villager) {          
 			  villager.task = 'bighunt';          
 			  villager.taskStartTime = nextTransitionTime;          
-			  delete villager.assignedBoar; // Clear any luring assignment          
+			  delete villager.assignedBoar; 
 			  nextTransitionBoar.workersAssigned.push(villager.id);          
 			  recordHistory(villager, `${nextTransitionBoar.type} #${nextTransitionBoar.id}`);          
 			}    
@@ -2771,27 +2845,23 @@
 			addLog(`${nextTransitionBoar.type.charAt(0).toUpperCase() + nextTransitionBoar.type.slice(1)} #${nextTransitionBoar.id} killed! Villager #${villager?.id} assigned to gather (${nextTransitionBoar.remainingFood} food available)`);    
 		  }    
 		  
-		  timeSec = originalTimeSec; // Restore original time    
+		  timeSec = originalTimeSec; 
 		}    
 		  
-		// If no more transitions, consume remaining time    
 		if (nextTransitionTime === Infinity) {    
 		  break;    
 		}    
 	  }
 
-	  // Main gathering loop (excluding finite resources)
 	  vils.forEach(v => {    
 		if (v.task in FOOD_RATE && !['sheep', 'hunt', 'berries', 'bighunt'].includes(v.task)) {
 		  let dur = dt;
 
-		  // Apply drop-off penalty from previous cycle
 		  if (v.dropoffPenalty) {
 			dur = Math.max(0, dur - v.dropoffPenalty);
 			v.dropoffPenalty = Math.max(0, v.dropoffPenalty - dt);
 		  }
 
-		  // Apply initial task delay
 		  const taskStartTime = v.taskStartTime || 0;
 		  const timeOnCurrentTask = timeSec - taskStartTime;
 		  const taskDelay = TASK_DELAYS[v.task] || 0;
@@ -2804,7 +2874,6 @@
 		  if (dur > 0) {
 			let rate = FOOD_RATE[v.task];
 
-			// Apply civilization bonuses
 			const civ = CIVILIZATIONS[selectedCiv];
 			if (['sheep', 'hunt', 'berries', 'bighunt'].includes(v.task)) {
 			  handleFiniteResourceGathering(v, dur, sheepSnapshot);
@@ -2814,13 +2883,11 @@
 			v.basket.food = (v.basket.food || 0) + collected;
 			v.lifetimeGathered.food += collected;
 
-			// Handle drop-off with delay penalty
 			if (v.basket.food >= CAPACITY[v.task]) {
 			  res.food += CAPACITY[v.task];
 			  totalGathered.food += CAPACITY[v.task];
 			  v.basket.food -= CAPACITY[v.task];
 			  
-			  // Apply drop-off penalty for next processing cycle
 			  v.dropoffPenalty = (v.dropoffPenalty || 0) + TASK_DELAYS.dropoff;
 			  
 			  addLog(`Vil #${v.id} dropped off ${CAPACITY[v.task]} food`);
@@ -2828,18 +2895,15 @@
 		  }
 		}
 
-		// Handle wood, gold, stone gathering with same logic
 		['wood', 'gold', 'stone'].forEach(resource => {
 		  if (v.task === resource) {
 			let dur = dt;
 			
-			// Apply drop-off penalty from previous cycle
 			if (v.dropoffPenalty) {
 			  dur = Math.max(0, dur - v.dropoffPenalty);
 			  v.dropoffPenalty = Math.max(0, v.dropoffPenalty - dt);
 			}
 			
-			// Apply initial task delay
 			const taskStartTime = v.taskStartTime || 0;
 			const timeOnCurrentTask = timeSec - taskStartTime;
 			const taskDelay = TASK_DELAYS[v.task] || 0;
@@ -2855,13 +2919,11 @@
 			  v.basket[resource] = (v.basket[resource] || 0) + collected;
 			  v.lifetimeGathered[resource] += collected;
 			  
-			  // Handle drop-off with delay penalty
 			  if (v.basket[resource] >= CAPACITY[resource]) {
 				res[resource] += CAPACITY[resource];
 				totalGathered[resource] += CAPACITY[resource];
 				v.basket[resource] -= CAPACITY[resource];
 				
-				// Apply drop-off penalty for next processing cycle
 				v.dropoffPenalty = (v.dropoffPenalty || 0) + TASK_DELAYS.dropoff;
 				
 				addLog(`Vil #${v.id} dropped off ${CAPACITY[resource]} ${resource}`);
@@ -2871,18 +2933,15 @@
 		});
 	  });
 
-	  // Handle finite resource gathering separately
 	  vils.forEach(v => {
 		if (['sheep', 'hunt', 'berries', 'bighunt'].includes(v.task)) {
 		  let dur = dt;
 		  
-		  // Apply drop-off penalty from previous cycle
 		  if (v.dropoffPenalty) {
 			dur = Math.max(0, dur - v.dropoffPenalty);
 			v.dropoffPenalty = Math.max(0, v.dropoffPenalty - dt);
 		  }
 		  
-		  // Apply initial task delay
 		  const taskStartTime = v.taskStartTime || 0;
 		  const timeOnCurrentTask = timeSec - taskStartTime;
 		  const taskDelay = TASK_DELAYS[v.task] || 0;
@@ -2898,7 +2957,6 @@
 		}
 	  });
 	  
-		// Reset decay flags for next cycle
 		Object.values(finiteResources).flat().forEach(resource => {
 		  if (resource && resource.decayAppliedThisCycle) {
 			resource.decayAppliedThisCycle = false;
@@ -2922,12 +2980,10 @@
 		}
 	  });
 
-	  // building
 	  builds.forEach(b => {
 		const workersOnBuilding = vils.filter(v => v.bldUid === b.uid);
 		let effectiveWorkers = 0;
 		
-		// NEW: Count only workers who have finished their setup delay
 		workersOnBuilding.forEach(worker => {
 		  const taskStartTime = worker.taskStartTime || 0;
 		  const timeOnBuilding = timeSec - taskStartTime;
@@ -2941,7 +2997,6 @@
 		if (effectiveWorkers > 0) {
 		  let workRate = 1 + 0.3333 * (effectiveWorkers - 1);
 		  
-		  // Apply civilization bonuses (unchanged)
 		  if (selectedCiv === 'wu' && b.name === 'House') {
 			workRate *= CIVILIZATIONS.wu.bonuses.houseBuildSpeed;
 		  }
@@ -2954,6 +3009,7 @@
 	  done.forEach(b => {
 		builds = builds.filter(x => x.uid !== b.uid);
 		addLog(`Finished building ${b.name}#${b.id}`);
+		addSimple(`build-${b.name.toLowerCase()}`, b.name.toLowerCase(), 1);
 		if (selectedCiv === 'wu' && CIVILIZATIONS.wu.bonuses.buildingFoodBonus) {
 		  const eligibleBuildings = ['Barracks', 'ArcheryRange', 'Stable', 'SiegeWorkshop', 'Castle', 'Dock'];
 		  if (eligibleBuildings.includes(b.name)) {
@@ -2978,8 +3034,7 @@
 	  let assignedResource = null;
 	  let resourcePool = null;
 	  
-	  // Determine which resource pool to use
-		if (resourceType === 'sheep') {
+	  	if (resourceType === 'sheep') {
 			resourcePool = finiteResources.sheep;
 			console.log(`Resource type is ${resourceType}, pool has ${resourcePool.length} resources`);
 		} else if (resourceType === 'hunt') {
@@ -2996,7 +3051,6 @@
 		  }
 		}
 	  
-	  // Find assigned resource or assign to first available
 	  assignedResource = resourcePool.find(resource => 
 		resource.workersAssigned.includes(villager.id) && !resource.depleted
 	  );
@@ -3019,9 +3073,7 @@
 		  console.log(`DEBUG: Villager ${villager.id} could not find available bighunt resource`);
 		}
 	  
-	  // Apply decay for resources that decay over time (once per individual resource per cycle)
-		if (resourceType === 'sheep' || resourceType === 'hunt' || resourceType === 'bighunt') {
-		  // Check if this specific resource needs decay applied this cycle
+	  	if (resourceType === 'sheep' || resourceType === 'hunt' || resourceType === 'bighunt') {
 		  if (!assignedResource.decayAppliedThisCycle) {  
 			assignedResource.decayAppliedThisCycle = true;
 			let decayRate = 0;
@@ -3029,7 +3081,6 @@
 			if (assignedResource.type && DECAY_RATES[assignedResource.type]) {
 			  decayRate = DECAY_RATES[assignedResource.type];
 			} else {
-			  // Fallback to resource category rates
 			  if (resourceType === 'sheep') decayRate = DECAY_RATES.sheep;
 			  else if (resourceType === 'hunt') decayRate = DECAY_RATES.hunt;
 			  else if (resourceType === 'bighunt') decayRate = DECAY_RATES.boar;
@@ -3049,7 +3100,6 @@
 		}
 		
 	  
-	  // Calculate gather rate with civilization bonuses
 	  let gatherRate = FOOD_RATE[resourceType];
 	  const civ = CIVILIZATIONS[selectedCiv];
 	  if (resourceType === 'sheep' && civ.bonuses.shepherdWorkRate) {
@@ -3064,7 +3114,7 @@
 	  
 		const availableFood = (sheepSnapshot && sheepSnapshot[assignedResource.id]) || assignedResource.remainingFood;
 		const maxGatherable = Math.min(availableFood, gatherRate * duration);
-		console.log(`Villager ${villager.id}: trying to gather ${(gatherRate * duration).toFixed(2)}, limited to ${maxGatherable.toFixed(2)} by remaining food`); // ADD THIS
+		console.log(`Villager ${villager.id}: trying to gather ${(gatherRate * duration).toFixed(2)}, limited to ${maxGatherable.toFixed(2)} by remaining food`);
 
 		if (maxGatherable > 0) {
 			if (resourceType === 'sheep') {
@@ -3076,7 +3126,6 @@
 		  
 		  console.log(`Villager ${villager.id}: gathered ${maxGatherable.toFixed(2)}, basket now ${villager.basket.food.toFixed(2)}, ${resourceType} has ${assignedResource.remainingFood.toFixed(2)} left`);
 		
-		// Handle drop-off
 		const capacity = CAPACITY[resourceType];
 		if (villager.basket.food >= capacity) {
 		  const oldResFood = res.food;
@@ -3094,7 +3143,6 @@
 		}
 	}
 	  
-	  // Check if resource is depleted
 	  if (assignedResource.remainingFood <= 0) {
 		assignedResource.depleted = true;
 		const index = assignedResource.workersAssigned.indexOf(villager.id);
@@ -3143,34 +3191,34 @@
 		berries: []
 	  };
 	  
-	  // Create 8 sheep by default
+	  const civ = CIVILIZATIONS[selectedCiv];
+	  const resourceMultiplier = civ.bonuses.longerLastingResources || 1.0;
+	  
 	  for (let i = 0; i < 8; i++) {
 		finiteResources.sheep.push({
 		  id: i + 1,
-		  remainingFood: 100,
+		  remainingFood: Math.floor(100 * resourceMultiplier),
 		  workersAssigned: [],
 		  lastUpdateTime: timeSec,
 		  depleted: false
 		});
 	  }
 	  
-	  // Create 4 deer by default
-		for (let i = 0; i < 4; i++) {
+	  	for (let i = 0; i < 4; i++) {
 		  finiteResources.hunt.push({
 			id: i + 1,
-			type: 'deer', 
-			remainingFood: 140,
+			type: 'deer',   
+			remainingFood: Math.floor(140 * resourceMultiplier),
 			workersAssigned: [],
 			lastUpdateTime: timeSec,
 			depleted: false
 		  });
 		}
 	  
-	  // Create 6 berry bushes by default
 	  for (let i = 0; i < 6; i++) {
 		finiteResources.berries.push({
 		  id: i + 1,
-		  remainingFood: 125,
+		  remainingFood: Math.floor(125 * resourceMultiplier),
 		  workersAssigned: [],
 		  lastUpdateTime: timeSec,
 		  depleted: false
@@ -3181,10 +3229,10 @@
 		  finiteResources.bighunt.push({
 			id: i + 1,
 			type: 'boar',
-			remainingFood: 340,
+			remainingFood: Math.floor(340 * resourceMultiplier),
 			hp: 75,
 			maxHp: 75,
-			state: 'wild', // wild, being_lured, being_killed, dead
+			state: 'wild',
 			luringVillager: null,
 			lureStartTime: null,
 			killStartTime: null,
@@ -3195,7 +3243,6 @@
 		}
 	}
 
-	// RENDER ZONES
 	function renderZones() {
 	  const zones = [
 		['idle', 'Idle'],
@@ -3218,7 +3265,6 @@
 	  td.innerHTML = '';
 	  
 	  zones.forEach(([id, label]) => {
-		// Create container for zone + controls
 		const container = document.createElement('div');
 		container.className = 'inline-block';
 		
@@ -3227,7 +3273,6 @@
 		z.className = 'task-zone ' + id;
 		z.textContent = label;
 		
-		// Add gather rate tooltip for resource zones
 		if (id !== 'idle' && id !== 'repair') {
 		  const gatherInfo = getGatherRate(id);
 		  let tooltipText = `${label}\nGather Rate: ${gatherInfo.rate.toFixed(1)}/min`;
@@ -3270,7 +3315,6 @@
 		  }
 
 		  ids.forEach(i => {
-			// Handle fishing ships
 			if (typeof i === 'string' && i.startsWith('ship-')) {
 			  const shipId = parseInt(i.replace('ship-', ''));
 
@@ -3311,7 +3355,6 @@
 			}
 			
 			if (id === 'lurebighunt') {
-			  // Only allow one villager to lure
 			  if (ids.length > 1) {
 				alert('Only one villager can lure at a time');
 				return;
@@ -3321,14 +3364,12 @@
 			  const villager = vils.find(v => v.id === vilId);
 			  if (!villager) return;
 			  
-			  // Find available wild boar/rhino
 			  const wildBoar = finiteResources.bighunt?.find(boar => boar.state === 'wild' && !boar.depleted);
 			  if (!wildBoar) {
 				alert('No wild boar/rhino available for luring');
 				return;
 			  }
 			  
-			  // Show explanation popup
 			  if (!boarLuringAlertShown) {
 				const showAgain = confirm(
 				  `BOAR LURING SYSTEM:\n\n` +
@@ -3344,7 +3385,6 @@
 				}
 			  }
 			  
-			  // Start luring
 			  villager.task = 'lurebighunt';
 			  villager.taskStartTime = timeSec;
 			  villager.assignedBoar = wildBoar.id;
@@ -3360,7 +3400,6 @@
 			  return;
 			}
 
-			// Handle villagers
 			const v = vils.find(x => x.id === i);
 			if (!v) return;
 
@@ -3387,7 +3426,6 @@
 
 		container.appendChild(z);
 		
-		// Add resource controls for specific zones
 		if (id === 'sheep') {
 		  createSheepControls(container);
 		} else if (id === 'berries') {
@@ -3401,7 +3439,6 @@
 		td.appendChild(container);
 	  });
 	  
-	  // Add event listeners for +/- buttons
 	  ['sheep', 'hunt', 'bighunt', 'berries'].forEach(type => {
 		const plusBtn = document.getElementById(`${type}-plus`);
 		const minusBtn = document.getElementById(`${type}-minus`);
@@ -3424,7 +3461,6 @@
 		}
 	  });
 
-	  // Add radio button listeners
 	  ['sheep-type', 'hunt-type', 'bighunt-type'].forEach(name => {
 		document.querySelectorAll(`input[name="${name}"]`).forEach(radio => {
 		  radio.onchange = () => updateFiniteResourceCounts();
@@ -3624,46 +3660,43 @@
 		bighunt: document.querySelector('input[name="bighunt-type"]:checked')?.value || 'boar'
 	  };
 	  
-	  // Reinitialize sheep/cow resources
+	  const civ = CIVILIZATIONS[selectedCiv];
+	  const resourceMultiplier = civ.bonuses.longerLastingResources || 1.0;
+	  
 	  finiteResources.sheep = [];
-	  // Simulate sheep consumption based on empirical data
-		const sheepConsumed = Math.ceil(calculateTotalFoodGathered() / 80); // Account for decay
-		finiteResources.sheep = finiteResources.sheep.slice(sheepConsumed);
 	  for (let i = 0; i < counts.sheep; i++) {
 		finiteResources.sheep.push({
 		  id: i + 1,
 		  type: types.sheep,
-		  remainingFood: types.sheep === 'sheep' ? 100 : 150, // Cow has more food
+		  remainingFood: Math.floor((types.sheep === 'sheep' ? 100 : 150) * resourceMultiplier),
 		  workersAssigned: [],
 		  lastUpdateTime: timeSec,
 		  depleted: false
 		});
 	  }
 	  
-	  // Reinitialize hunt resources (deer/chicken)
 	  finiteResources.hunt = [];
 	  for (let i = 0; i < counts.hunt; i++) {
 		finiteResources.hunt.push({
 		  id: i + 1,
 		  type: types.hunt,
-		  remainingFood: types.hunt === 'deer' ? 140 : 65, // Deer vs chicken food amounts
+		  remainingFood: Math.floor((types.hunt === 'deer' ? 140 : 65) * resourceMultiplier),
 		  workersAssigned: [],
 		  lastUpdateTime: timeSec,
 		  depleted: false
 		});
 	  }
 	  
-	  // Reinitialize big hunt resources (boar/rhino) with luring states
-		if (!finiteResources.bighunt) finiteResources.bighunt = [];
+	  if (!finiteResources.bighunt) finiteResources.bighunt = [];
 		finiteResources.bighunt = [];
 		for (let i = 0; i < counts.bighunt; i++) {
 		  finiteResources.bighunt.push({
 			id: i + 1,
 			type: types.bighunt,
-			remainingFood: types.bighunt === 'boar' ? 340 : 400,
+			remainingFood: Math.floor((types.bighunt === 'boar' ? 340 : 400) * resourceMultiplier),
 			hp: 75,
 			maxHp: 75,
-			state: 'wild', // wild, being_lured, being_killed, dead
+			state: 'wild',
 			luringVillager: null,
 			lureStartTime: null,
 			killStartTime: null,
@@ -3673,19 +3706,17 @@
 		  });
 		}
 	  
-	  // Reinitialize berries
 	  finiteResources.berries = [];
 	  for (let i = 0; i < counts.berries; i++) {
 		finiteResources.berries.push({
 		  id: i + 1,
-		  remainingFood: 125,
+		  remainingFood: Math.floor(125 * resourceMultiplier),
 		  workersAssigned: [],
 		  lastUpdateTime: timeSec,
 		  depleted: false
 		});
 	  }
 	  
-	  // Update the "Left" counters to show remaining (non-depleted) resources
 	  updateResourceLeftDisplay();
 	  updateBerriesProgress();
 	}
@@ -3716,7 +3747,7 @@
 	  
 	  const totalRemaining = finiteResources.berries.reduce((sum, berry) => sum + berry.remainingFood, 0);
 	  const totalCount = parseInt(document.getElementById('berries-count').textContent);
-	  const totalStarting = totalCount * 125; // 125 food per berry bush
+	  const totalStarting = totalCount * 125; 
 	  
 	  const percentage = totalStarting > 0 ? (totalRemaining / totalStarting) * 100 : 0;
 	  
@@ -3730,7 +3761,6 @@
 	  const civ = CIVILIZATIONS[selectedCiv];
 	  let appliedBonuses = [];
 	  
-	  // Apply civilization bonuses and track which ones are applied
 	  if (resourceType === 'sheep' && civ.bonuses.shepherdWorkRate) {
 		baseRate *= civ.bonuses.shepherdWorkRate;
 		appliedBonuses.push(`${civ.name} shepherd bonus: ${((civ.bonuses.shepherdWorkRate - 1) * 100).toFixed(0)}% faster`);
@@ -3746,7 +3776,6 @@
 		appliedBonuses.push(`${civ.name} hunter bonus: ${((civ.bonuses.hunterWorkRate - 1) * 100).toFixed(0)}% faster`);
 	  }
 	  
-	  // Convert rate to per-minute for display
 	  const ratePerMinute = resourceType in FOOD_RATE ? baseRate * 60 : baseRate * 60;
 	  
 	  return {
@@ -3756,13 +3785,11 @@
 	}
 	
 	function updateResourceProgressBars() {
-	  // Update sheep progress
 	  const activeSheep = finiteResources.sheep.find(sheep => 
 		sheep.workersAssigned.length > 0 && !sheep.depleted
 	  );
 	  updateProgressBar('sheep', activeSheep, 100);
 
-	  // Update hunt progress  
 	  const huntType = document.querySelector('input[name="hunt-type"]:checked')?.value || 'deer';
 	  const activeHunt = finiteResources.hunt.find(hunt => 
 		hunt.type === huntType && hunt.workersAssigned.length > 0 && !hunt.depleted
@@ -3770,7 +3797,6 @@
 	  const huntMax = huntType === 'deer' ? 140 : 65;
 	  updateProgressBar('hunt', activeHunt, huntMax);
 
-	  // Update bighunt progress
 	  const activeBighunt = finiteResources.bighunt?.find(boar => 
 		boar.workersAssigned.length > 0 && !boar.depleted && boar.state === 'dead'
 	  );
@@ -3815,7 +3841,6 @@
 	  updateBerriesProgress();
 	}
 
-	// RENDER RESOURCES & POP
 	function renderRes() {
 	  rd.innerHTML = '';
 	  [
@@ -3849,7 +3874,6 @@
 	  rd.appendChild(tm);
 	}
 
-	// RENDER VILLAGERS
 	function renderVils() {
 	  vd.innerHTML = '';
 	  const icons = {
@@ -3897,12 +3921,10 @@
 	  vd.appendChild(selRect);
 	}
 
-	// Render military units
 	function renderMilitaryUnits() {
 			const mu = document.getElementById('militia-units');
 		  mu.innerHTML = '';
 
-		  // Handle the initial scout separately
 		  if (scoutOn && scoutActive.length > 0) {
 			scoutActive.forEach(id => {
 			  const d = document.createElement('div');
@@ -3910,20 +3932,19 @@
 
 			  const img = document.createElement('img');
 			  
-			  // Determine scout type based on civilization
-			  let scoutType = 'Scout';
-			  let iconPath = 'icons/military-icons/scout-icon.png';
-			  
-			  if (['maya', 'aztecs', 'inca'].includes(selectedCiv)) {
-				scoutType = researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout';
-				iconPath = researchedUpgrades.eaglewarrior ? 'icons/military-icons/eaglewarrior-icon.png' : 'icons/military-icons/eaglescout-icon.png';
-			  } else if (selectedCiv === 'gurjaras') {
-				scoutType = 'Camel Scout';
-				iconPath = 'icons/military-icons/camelscout-icon.png';
-			  } else {
-				scoutType = researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout';
-				iconPath = researchedUpgrades.lightcavalry ? 'icons/military-icons/light-cavalry-icon.png' : 'icons/military-icons/scout-icon.png';
-			  }
+				let scoutType = 'Scout';  
+				let iconPath = 'icons/military-icons/scout-icon.png';  
+
+				if (['maya', 'aztecs', 'inca'].includes(selectedCiv)) {  
+				  scoutType = researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout';  
+				  iconPath = researchedUpgrades.eaglewarrior ? 'icons/military-icons/eaglewarrior-icon.png' : 'icons/military-icons/eaglescout-icon.png';  
+				} else if (selectedCiv === 'gurjaras') {  
+				  scoutType = 'Camel Scout';  
+				  iconPath = 'icons/military-icons/camelscout-icon.png';  
+				} else {  
+				  scoutType = researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout';  
+				  iconPath = researchedUpgrades.lightcavalry ? 'icons/military-icons/light-cavalry-icon.png' : 'icons/military-icons/scout-icon.png';  
+				}
 
 			  img.src = iconPath;
 			  img.style.opacity = 1;
@@ -3939,9 +3960,7 @@
 			});
 		  }
 
-	  // Dynamically render all military units from all arrays
 	  Object.keys(UNIT_TYPES).forEach(unitType => {
-		// Skip civilian units
 		if (unitType === 'villager' || unitType === 'fishingship') return;
 		
 		const unitArray = getUnitArrayDynamic(unitType);
@@ -3952,10 +3971,7 @@
 
 			const img = document.createElement('img');
 			
-			// Get the display name based on upgrades
 			let displayName = getUpgradedUnitName(unitType);
-			
-			// Map unit types to their correct icons
 			const uniticons = {
 			  'Militia': 'icons/military-icons/militia-icon.png',
 			  'Men-at-Arms': 'icons/military-icons/maa-icon.png',
@@ -3981,7 +3997,13 @@
 			  'Fire Galley': 'icons/military-icons/firegalley-icon.png',
 			  'Fire Ship': 'icons/military-icons/fire-ship-icon.png',
 			  'Jian Swordsman': 'icons/military-icons/jianswordsman-icon.png',
-			  'Hei Guang Cavalry': 'icons/military-icons/hei-guang-icon.png'
+			  'Hei Guang Cavalry': 'icons/military-icons/hei-guang-icon.png',
+			  'Longbowman': 'icons/military-icons/longbowman-icon.png',
+			  'Konnik': 'icons/military-icons/konnik-icon.png',
+			  'Throwing Axeman': 'icons/military-icons/throwingaxeman-icon.png',
+			  'Mangudai': 'icons/military-icons/mangudai-icon.png',
+			  'Calf Archer': 'icons/military-icons/plumedarcher-icon.png',
+			  'Fire Archer': 'icons/military-icons/firearcher-icon.png'
 			};
 
 			img.src = uniticons[displayName] || `icons/military-icons/${unitType}-icon.png`;
@@ -4004,7 +4026,6 @@
 	  const mu = document.getElementById('fishing-boat');
 	  mu.innerHTML = '';
 
-	  // Render fishing ships
 	  fishingShipActive.forEach(ship => {
 		const d = document.createElement('div');
 		d.className = 'villager';
@@ -4036,7 +4057,6 @@
 		mu.appendChild(d);
 	  });
 
-	  // Render transport ships
 	  transportshipActive.forEach(ship => {
 		const d = document.createElement('div');
 		d.className = 'villager';
@@ -4056,14 +4076,12 @@
 	  });
 	}
 
-	// RENDER BUILD BUTTONS
 	function renderBuildBtns() {
 	  bd.innerHTML = '';
 	  Object.keys(BUILD_COST).forEach(n => {
 		const b = document.createElement('button');
 		b.textContent = n;
 
-		// Color code by age
 		const age = BUILDING_AGES[n];
 		let ageClass = '';
 		if (age === 'Dark') ageClass = 'building-dark';
@@ -4072,9 +4090,12 @@
 		else if (age === 'Imperial') ageClass = 'building-imperial';
 
 		b.className = `px-2 py-1 rounded text-sm ${ageClass}`;
+		if (n === 'Krepost' && selectedCiv !== 'bulgarians') {
+		  b.style.display = 'none';
+		  return; 
+		}
 		if (!ageClass) b.className += ' bg-indigo-600 text-white';
 
-		// Check if building is available for current age
 		let canBuild = true;
 		if (age === 'Feudal' && currentAge === 'Dark') canBuild = false;
 		if (age === 'Castle' && (currentAge === 'Dark' || currentAge === 'Feudal')) canBuild = false;
@@ -4128,7 +4149,6 @@
 		  });
 
 		  addLog(`Started ${n}#${id}`);
-		  addSimple(`build-${n.toLowerCase()}`, n.toLowerCase(), 1);
 		  renderAll();
 		};
 		bd.appendChild(b);
@@ -4139,7 +4159,6 @@
 	  const td = document.getElementById('technologies');
 	  td.innerHTML = '';
 
-	  // Group technologies by age
 	  const techsByAge = {
 		'Dark': ['loom', 'feudalage'],
 		'Feudal': ['castleage', 'townwatch', 'wheelbarrow', 'horsecollar', 'doublebitaxe', 'goldmining',
@@ -4153,7 +4172,6 @@
 		'Imperial': ['transhumance']
 	  };
 
-	  // Only show ages up to current age
 		const availableAges = [];
 		if (currentAge === 'Dark') {
 		  availableAges.push('Dark');
@@ -4164,19 +4182,17 @@
 		}
 
 	  availableAges.forEach(age => {
-		// Add age separator
 		const separator = document.createElement('div');
 		separator.className = 'col-span-6 text-center font-bold text-sm py-1 border-b border-gray-300';
 		separator.textContent = `${age} Age`;
 		td.appendChild(separator);
 
 		techsByAge[age].forEach(techId => {
-		  if (!TECH_TYPES[techId]) return; // Skip if tech doesn't exist
+			if (!TECH_TYPES[techId]) return; 
 		  
-		  const tech = TECH_TYPES[techId];
+			const tech = TECH_TYPES[techId];
   
-		  // Check civilization restrictions - HIDE tech if not available
-			if (tech.civilizations && !tech.civilizations.includes(selectedCiv)) return;
+		  	if (tech.civilizations && !tech.civilizations.includes(selectedCiv)) return;
 			if (tech.excludedCivilizations && tech.excludedCivilizations.includes(selectedCiv)) return;
 
 		  
@@ -4185,17 +4201,13 @@
 			(techId === 'loom' && loomResearched) ||
 			researchedTechs[techId] ||
 			researchedUpgrades[techId];
+		  	let canResearch = !alreadyResearched;
 
-		  // Check if tech can actually be researched
-			let canResearch = !alreadyResearched;
-
-			// Check building requirement
 			if (tech.building && tech.building !== 'TownCenter') {
 			  const hasBuilding = (nextBuildIds[tech.building] - 1) - builds.filter(b => b.name === tech.building).length > 0;
 			  canResearch = canResearch && hasBuilding;
 			}
 
-			// Check cost requirement
 			if (canResearch) {
 			  for (let resource in tech.cost) {
 				if (res[resource] < tech.cost[resource]) {
@@ -4205,7 +4217,6 @@
 			  }
 			}
 
-			// Check custom requirements (like age prerequisites)
 			canResearch = canResearch && tech.requirement();
 
 		  const img = document.createElement('img');
@@ -4213,10 +4224,8 @@
 			// Ages
 			feudalage: 'icons/tech-icons/feudalage-icon.png',
 			castleage: 'icons/tech-icons/castleage-icon.png',
-			
 			// Dark Age
 			loom: 'icons/tech-icons/loom-icon.png',
-			
 			// Feudal Age
 			wheelbarrow: 'icons/tech-icons/wheelbarrow-icon.png',
 			horsecollar: 'icons/tech-icons/horsecollar-icon.png',
@@ -4238,7 +4247,6 @@
 			squires: 'icons/tech-icons/squires-icon.png',
 			pastoralism: 'icons/tech-icons/Pastoralism-icon.png',
 			maa: 'icons/tech-icons/maa-icon.png',
-			
 			// Castle Age
 			ballistics: 'icons/tech-icons/ballistics-icon.png',
 			redemption: 'icons/tech-icons/redemption-icon.png',
@@ -4285,7 +4293,6 @@
 			  queueTech(techId);
 			};
 		  } else {
-			// Greyed out but visible
 			img.style.opacity = '0.5';
 			img.style.filter = 'grayscale(100%)';
 		  }
@@ -4298,47 +4305,41 @@
 	function getBuildingDelay(buildingName) {
 	  if (buildingName === 'House') return 2;
 	  if (buildingName === 'TownCenter') return 8;
-	  return 4; // Default for other buildings
+	  return 4; 
 	}
 	
 	function getNextAvailableUpgrade(unitType) {
 	  const unitConfig = UNIT_TYPES[unitType];
 	  if (!unitConfig || !unitConfig.upgrades) return null;
 	  
-	  // Check each upgrade in order to find the next available one
 	  for (let upgrade of unitConfig.upgrades) {
 		if (!researchedUpgrades[upgrade]) {
-		  return upgrade; // This is the next upgrade we haven't researched yet
+		  return upgrade; 
 		}
 	  }
-	  return null; // All upgrades have been researched
+	  return null; 
 	}
 	
-	// Initialize sheep pools when the game starts
 	function initializeSheepPools(count = 8) {
 	  sheepPools = [];
 	  for (let i = 0; i < count; i++) {
 		sheepPools.push({
 		  id: nextSheepId++,
-		  remainingFood: 100, // Each sheep starts with 100 food
-		  workersAssigned: [], // Track which villagers are working on this sheep
-		  isActive: true // Whether this sheep is still available for gathering
+		  remainingFood: 100, 
+		  workersAssigned: [],
+		  isActive: true
 		});
 	  }
 	}
 
-	// Helper function to find the current active sheep (the one being gathered from)
 	function getCurrentActiveSheep() {
 	  return sheepPools.find(sheep => sheep.isActive && sheep.workersAssigned.length > 0);
 	}
 
-	// Helper function to get the next available sheep when current one is exhausted
 	function getNextAvailableSheep() {
 	  return sheepPools.find(sheep => sheep.isActive && sheep.remainingFood > 0);
 	}
 	
-	// Build Order Configurations
-	// Build Order Configurations
 	const BUILD_ORDERS = {
 	  standard: {
 		  name: "Standard Build Order",
@@ -4425,8 +4426,8 @@
 			{ type: 'villager', progress: 0 }
 		  ],
 		  sheep: {
-			total: 7, // 1 dead + 6 live
-			currentSheepFood: 20, // Dead sheep remaining food
+			total: 7, 
+			currentSheepFood: 20,
 			workersOnSheep: 6
 		  }
 		},
@@ -4500,7 +4501,7 @@
 			basket: { wood: 0 }
 		  }
 		],
-		builds: [], // No buildings in progress
+		builds: [], 
 		resources: {
 		  food: 75,
 		  wood: 50,
@@ -4515,8 +4516,8 @@
 		  { type: 'villager', progress: 0.6 }
 		],
 		sheep: {
-		  total: 6, // 5 live + 1 dead
-		  currentSheepFood: 35, // Dead sheep remaining food
+		  total: 6, 
+		  currentSheepFood: 35,
 		  workersOnSheep: 6
 		}
 	  }
@@ -4534,7 +4535,6 @@
 	  init();
 	  timeSec = buildOrder.timeSec;
 	  
-	  // Get civilization bonuses
 	  const civ = CIVILIZATIONS[selectedCiv];
 	  let sheepRate = FOOD_RATE.sheep;
 	  let woodRate = RESOURCE_RATES.wood;
@@ -4543,7 +4543,6 @@
 		sheepRate *= civ.bonuses.shepherdWorkRate;
 	  }
 	  
-	  // Create villagers from configuration
 	  vils = buildOrder.villagers.map(vilConfig => {
 		const villager = {
 		  id: vilConfig.id,
@@ -4555,12 +4554,10 @@
 		  selected: false
 		};
 		
-		// Handle building assignment
 		if (vilConfig.bldUid) {
 		  villager.bldUid = vilConfig.bldUid;
 		}
 		
-		// Calculate gathering amounts
 		if (vilConfig.task === 'sheep' && vilConfig.gatheringTime) {
 		  const gathering = calculateResourceGathering(vilConfig.gatheringTime, sheepRate, 10);
 		  villager.lifetimeGathered.food = gathering.total;
@@ -4573,7 +4570,6 @@
 		  villager.basket.wood = vilConfig.basket.wood || gathering.basket;
 		}
 		
-		// Set basket amounts from config
 		Object.keys(vilConfig.basket).forEach(resource => {
 		  if (vilConfig.basket[resource] !== 'calculated') {
 			villager.basket[resource] = vilConfig.basket[resource];
@@ -4583,7 +4579,6 @@
 		return villager;
 	  });
 	  
-	  // Set up builds
 	  builds = buildOrder.builds.map(buildConfig => ({
 		uid: buildConfig.uid,
 		id: buildConfig.id,
@@ -4592,20 +4587,16 @@
 		rem: buildConfig.rem
 	  }));
 	  
-	  // Set up completed buildings
 	  Object.keys(buildOrder.completedBuildings).forEach(buildingName => {
 		nextBuildIds[buildingName] = buildOrder.completedBuildings[buildingName] + 1;
 	  });
 	  
-	  // Calculate pop cap from houses
 	  popCap = 5 + (buildOrder.completedBuildings.House * 5);
 	  
-	  // Set up sheep resources
 	  if (buildOrder.sheep) {
 		finiteResources.sheep = [];
 		
 		if (buildOrder.sheep.currentSheepFood) {
-		  // Build order with dead sheep (both standard and advanced use this now)
 		  finiteResources.sheep.push({
 			id: 1,
 			type: 'sheep',
@@ -4615,7 +4606,6 @@
 			depleted: false
 		  });
 		  
-		  // Add remaining live sheep
 		  for (let i = 2; i <= buildOrder.sheep.total; i++) {
 			finiteResources.sheep.push({
 			  id: i,
@@ -4627,7 +4617,6 @@
 			});
 		  }
 		} else {
-		  // Fallback for build orders without currentSheepFood
 		  for (let i = 1; i <= buildOrder.sheep.total; i++) {
 			finiteResources.sheep.push({
 			  id: i,
@@ -4641,7 +4630,6 @@
 		}
 	  }
 	  
-	  // Set up training queue
 	  buildOrder.queuedUnits.forEach(unitConfig => {
 		const unitType = UNIT_TYPES[unitConfig.type];
 		const remaining = unitType.trainTime * (1 - unitConfig.progress);
@@ -4654,15 +4642,13 @@
 		});
 	  });
 	  
-	  // Set resources directly from configuration
-		res = {
+	  	res = {
 		  food: buildOrder.resources.food,
 		  wood: buildOrder.resources.wood,
 		  gold: buildOrder.resources.gold,
 		  stone: buildOrder.resources.stone
 		};
 	  
-	  // Calculate total spent and gathered
 	  const villagersSpent = vils.length * 50;
 	  const housesSpent = buildOrder.completedBuildings.House * 25;
 	  const lumberCampSpent = buildOrder.completedBuildings.LumberCamp * 100;
@@ -4674,7 +4660,6 @@
 		stone: 0
 	  };
 	  
-	  // Calculate total gathered
 	  let totalFoodGathered = 0;
 	  let totalWoodGathered = 0;
 	  
@@ -4690,7 +4675,6 @@
 		stone: 0
 	  };
 	  
-	  // Update villager counter
 	  unitIdCounters.villager = Math.max(...vils.map(v => v.id)) + 1;
 	  
 	  civLocked = true;
@@ -4722,8 +4706,8 @@
 	}
 
 	function calculateSheepGathering(seconds) {
-	  const baseRate = 0.33; // Official sheep gathering rate
-	  const decayAdjustedRate = 0.33; // Empirically adjusted for decay and sharing
+	  const baseRate = 0.33; 
+	  const decayAdjustedRate = 0.33;
 	  const capacity = 10;
 	  
 	  const totalGathered = decayAdjustedRate * seconds;
@@ -4735,17 +4719,17 @@
 
 	function calculateTotalFoodGathered() {
 	  let total = 0;
-	  total += calculateSheepGathering(26, 125).total * 2; // Villagers 1-2 (start at 26s)
-	  total += calculateSheepGathering(33, 125).total;     // Villager 3 (starts at 33s, built alone)
-	  total += calculateSheepGathering(26, 125).total;     // Villager 4 (starts at 26s)
-	  total += calculateSheepGathering(51, 125).total;     // Villager 5
-	  total += calculateSheepGathering(76, 125).total;     // Villager 6
+	  total += calculateSheepGathering(26, 125).total * 2;
+	  total += calculateSheepGathering(33, 125).total;    
+	  total += calculateSheepGathering(26, 125).total;    
+	  total += calculateSheepGathering(51, 125).total;    
+	  total += calculateSheepGathering(76, 125).total;    
 	  return total;
 	}
 
 	function calculateWoodGathering(seconds) {
-	  const rate = FLAT_RATE; // Wood gathering rate
-	  const capacity = CAPACITY.wood; // 10 wood capacity
+	  const rate = FLAT_RATE; 
+	  const capacity = CAPACITY.wood; 
 	  
 	  const totalGathered = rate * seconds;
 	  const droppedOff = Math.floor(totalGathered / capacity) * capacity;
@@ -4774,7 +4758,6 @@
 	function renderActive() {
 	  ab.innerHTML = '';
 
-	  // Technology research progress
 	  if (isAdvancing) {
 		const tech = TECH_TYPES[isAdvancing.type];
 		const pct = Math.round((tech.time - isAdvancing.rem) / tech.time * 100);
@@ -4791,14 +4774,12 @@
 		ab.appendChild(z);
 	  }
 
-	  // Tech queue progress - show ALL techs with proper active status
-		const techQueue = trainingQueue.filter(j => j.type === 'tech');
+	  	const techQueue = trainingQueue.filter(j => j.type === 'tech');
 		techQueue.forEach(techJob => {
 		  let pct = 0;
 		  let isActive = false;
 		  
 		  if (techJob.building === 'TownCenter') {
-			// For TC techs, check if it's first in the TC queue
 			const tcQueue = trainingQueue.filter(j => 
 			  j.type === 'villager' || (j.type === 'tech' && j.building === 'TownCenter')
 			);
@@ -4807,7 +4788,6 @@
 			  pct = Math.round((techJob.total - techJob.rem) / techJob.total * 100);
 			}
 		  } else {
-			// For other buildings, check if any building of that type is available
 			const totalBuildings = (nextBuildIds[techJob.building] - 1) - builds.filter(b => b.name === techJob.building).length;
 			if (totalBuildings > 0) {
 			  isActive = true;
@@ -4829,13 +4809,24 @@
 		  ab.appendChild(z);
 		});
 
-	  // Training progress for all unit types
 	  Object.keys(UNIT_TYPES).forEach(unitType => {
 		const queue = trainingQueue.filter(j => j.type === unitType);
 		if (queue.length === 0) return;
 
 		const cfg = UNIT_TYPES[unitType];
-		const slots = typeof cfg.parallelSlots === 'function' ? cfg.parallelSlots() : cfg.parallelSlots;
+		let slots = typeof cfg.parallelSlots === 'function' ? cfg.parallelSlots() : cfg.parallelSlots;
+		
+		if (unitType === 'konnik' && selectedCiv === 'bulgarians') {
+		  const castleSlots = (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length;
+		  const krepostSlots = (nextBuildIds['Krepost'] - 1) - builds.filter(b => b.name === 'Krepost').length;
+		  slots = castleSlots + krepostSlots;
+		}
+		
+		if (unitType === 'konnik' && selectedCiv === 'bulgarians') {
+		  const castleSlots = (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length;
+		  const krepostSlots = (nextBuildIds['Krepost'] - 1) - builds.filter(b => b.name === 'Krepost').length;
+		  slots = castleSlots + krepostSlots;
+		}
 
 		queue.forEach((job, i) => {
 		  let pct = 0;
@@ -4861,7 +4852,6 @@
 				  }
 				}
 			  
-			  // Handle upgraded unit icons
 			  const upgradedUnitName = getUpgradedUnitName(unitType);
 			  const iconMap = {
 				'Men-at-Arms': 'icons/military-icons/maa-icon.png',
@@ -4893,7 +4883,6 @@
 		});
 	  });
 
-	  // Building progress
 	  builds.forEach(b => {
 		const z = document.createElement('div');
 		z.className = 'build-zone';
@@ -4983,19 +4972,15 @@
 		  pushState();
 		  const entry = logEntries[i];
 		  
-		  // Handle tech research deletions
 		  const techMatch = entry.msg.match(/^Started (.+)/);
 		  if (techMatch) {
 			const techName = techMatch[1];
-			// Find the tech in TECH_TYPES by name and remove from queue
 			const techId = Object.keys(TECH_TYPES).find(id => TECH_TYPES[id].name === techName);
 			if (techId) {
 			  const tech = TECH_TYPES[techId];
-			  // Refund resources
 			  Object.entries(tech.cost).forEach(([resource, amount]) => {
 				res[resource] += amount;
 			  });
-			  // Remove from training queue
 			  trainingQueue = trainingQueue.filter(q => !(q.type === 'tech' && q.techId === techId));
 			}
 			logEntries.splice(i, 1);
@@ -5074,9 +5059,9 @@
 		wood: res.wood.toFixed(1), 
 		gold: res.gold.toFixed(1),
 		stone: res.stone.toFixed(1),
-		vills: Math.min(8, Math.floor(time/25) + 3), // Progressive villager count
-		popCount: Math.min(8, Math.floor(time/25) + 3) + 1, // +1 for scout
-		popCap: time >= 25 ? 15 : 5 // Pop cap increases after houses complete
+		vills: Math.min(8, Math.floor(time/25) + 3),
+		popCount: Math.min(8, Math.floor(time/25) + 3) + 1,
+		popCap: time >= 25 ? 15 : 5
 	  });
 	}
 
@@ -5091,7 +5076,7 @@
 		gold: res.gold.toFixed(1),
 		stone: res.stone.toFixed(1),
 		vills: vils.length,
-		popCount: popCount, // Add this new field
+		popCount: popCount,
 		queued: !!trainBuild,
 		popCap
 	  });
@@ -5141,7 +5126,6 @@
 	  addLog('Ninjalui: +10000 all resources, pop cap set to 200');
 	  renderAll();
 	};
-	// Initialize theme based on system preference
 	function initializeTheme() {
 	  const body = document.body;
 	  const button = document.getElementById('btn-theme-toggle');
@@ -5185,7 +5169,6 @@
 	  radio.addEventListener('change', (e) => {
 		if (civLocked) {
 		  alert('Cannot change civilization after time has been processed. Please reset first.');
-		  // Revert to current selection
 		  document.querySelector(`input[value="${selectedCiv}"]`).checked = true;
 		  return;
 		}
@@ -5193,9 +5176,13 @@
 		  selectedCiv = e.target.value;
 		  init();
 		}
+		if (['maya', 'inca', 'aztecs'].includes(selectedCiv)) {
+		  scoutImg.src = 'icons/military-icons/eaglescout-icon.png';
+		} else {
+		  scoutImg.src = 'icons/military-icons/scout-icon.png';
+		}
 	  });
 	});
-	// START
 	initializeTheme();
 	init();
 	</script>
