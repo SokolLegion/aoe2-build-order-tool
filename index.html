@@ -641,7 +641,7 @@
 
   <!-- FOOTER -->
   <div class="footer">
-    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.2.2 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
+    Developed by&nbsp; <strong>Sokół </strong> &nbsp;- ©2025 - v0.2.3 (beta)&nbsp;<a href=https://coff.ee/lelegion target="_blank">☕️ <i>Buy me a coffee!</i></url>
   </div>
 
   <script>
@@ -930,8 +930,34 @@
 	let boarLuringAlertShown = false;
 	let earlyBarracksAlertShown = false;
 
-    // Dynamic ID counter system
-    const unitIdCounters = {};
+    // Naming + Dynamic ID counter system
+    const unitNames = {
+				fishingship: 'Fishing Ship',
+				transportship: 'Transport Ship',
+				militia: researchedUpgrades.longswordsman ? 'Long Swordsman' : (researchedUpgrades.maa ? 'Men-at-Arms' : 'Militia'),
+				knight: 'Knight',
+				monk: 'Monk',
+				mangonel: 'Mangonel',
+				galley: researchedUpgrades.wargalley ? 'War Galley' : 'Galley',
+				scout: researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout',
+				archer: researchedUpgrades.crossbowman ? 'Crossbowman' : 'Archer',
+				spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
+				eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
+				firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
+				skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',        
+				camel: 'Camel',        
+				steppelancer: 'Steppe Lancer',
+				longbowman: 'Longbowman',
+				throwingaxeman: 'Throwing Axeman',
+				mangudai: 'Mangudai',
+				plumedarcher: 'Calf Archer',
+				firearcher: 'Fire Archer',
+				jianswordsman: 'Jian Swordsman',
+				cavalryarcher: 'Cavalry Archer',
+				heiguangcavalry: 'Hei Guang Cavalry',
+				scorpion: 'Scorpion'
+			  };	
+	const unitIdCounters = {};
 
     function getNextUnitId(unitType) {
       if (!unitIdCounters[unitType]) {
@@ -2157,7 +2183,7 @@
 		li.className = 'flex items-center justify-between';
 
         
-		let displayName = unit.name;
+		let displayName = unitNames[unit.key] || unit.name;
 		const unitConfig = UNIT_TYPES[unit.key];
 		if (unitConfig && unitConfig.upgrades) {
 		  for (let i = unitConfig.upgrades.length - 1; i >= 0; i--) {
@@ -2636,8 +2662,9 @@
 	  }
 
 	  
-	  if (selectedCiv === 'bulgarians') {
-		const konnikJobs = trainingQueue.filter(j => j.type === 'konnik');
+	  const buildingTypes = ['Barracks', 'Stable', 'Archery Range', 'Dock', 'Monastery', 'Siege Workshop', 'Blacksmith', 'Lumber Camp', 'Mining Camp', 'Mill', 'Market', 'University', 'Krepost', 'Castle'];  
+		if  (selectedCiv === 'bulgarians') {
+			const konnikJobs = trainingQueue.filter(j => j.type === 'konnik');
 		if (konnikJobs.length > 0) {
 		  const castleSlots = (nextBuildIds['Castle'] - 1) - builds.filter(b => b.name === 'Castle').length;
 		  const krepostSlots = (nextBuildIds['Krepost'] - 1) - builds.filter(b => b.name === 'Krepost').length;
@@ -2731,34 +2758,6 @@
 				  unitArray.push(j.id);
 				}
 			  }
-			  
-			  const unitNames = {
-				fishingship: 'Fishing Ship',
-				transportship: 'Transport Ship',
-				militia: researchedUpgrades.longswordsman ? 'Long Swordsman' : (researchedUpgrades.maa ? 'Men-at-Arms' : 'Militia'),
-				knight: 'Knight',
-				monk: 'Monk',
-				mangonel: 'Mangonel',
-				galley: researchedUpgrades.wargalley ? 'War Galley' : 'Galley',
-				scout: researchedUpgrades.lightcavalry ? 'Light Cavalry' : 'Scout',
-				archer: researchedUpgrades.crossbowman ? 'Crossbowman' : 'Archer',
-				spearman: researchedUpgrades.pikeman ? 'Pikeman' : 'Spearman',
-				eaglescout: researchedUpgrades.eaglewarrior ? 'Eagle Warrior' : 'Eagle Scout',
-				firegalley: researchedUpgrades.wargalley ? 'Fire Ship' : 'Fire Galley',
-				skirmisher: researchedUpgrades.eliteskirmisher ? 'Elite Skirmisher' : 'Skirmisher',        
-				camel: 'Camel',        
-				steppelancer: 'Steppe Lancer',
-				longbowman: 'Longbowman',
-				throwingaxeman: 'Throwing Axeman',
-				mangudai: 'Mangudai',
-				plumedarcher: 'Calf Archer',
-				firearcher: 'Fire Archer',
-				jianswordsman: 'Jian Swordsman',
-				cavalryarcher: 'Cavalry Archer',
-				heiguangcavalry: 'Hei Guang Cavalry',
-				scorpion: 'Scorpion'
-			  };
-			  
 			  const displayName = unitNames[j.type] || j.type;
 			  addLog(`${displayName} #${j.id} spawned`);
 			}
